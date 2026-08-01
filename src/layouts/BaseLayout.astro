@@ -1,0 +1,52 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import { site } from '../config/site';
+interface Props { title?: string; description?: string; }
+const { title, description = site.description } = Astro.props;
+const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.description}`;
+---
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-ui-language="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />
+    <title>{pageTitle}</title>
+    <script is:inline>
+      const storedTheme = localStorage.getItem('theme');
+      const theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      const language = localStorage.getItem('ui-language') || (navigator.language.startsWith('zh') ? 'zh' : 'en');
+      document.documentElement.dataset.uiLanguage = language;
+      document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+    </script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <Header />
+      <main><slot /></main>
+      <footer class="site-footer"><span>© {new Date().getFullYear()} {site.name}</span><a href="/rss.xml">RSS</a></footer>
+    </div>
+    <script>
+      function applyLanguage(language: string) {
+        document.documentElement.dataset.uiLanguage = language;
+        document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+        document.querySelectorAll<HTMLElement>('[data-ui-text]').forEach((el) => el.textContent = el.dataset[language] || '');
+        const toggle = document.querySelector<HTMLElement>('[data-language-toggle]');
+        if (toggle) toggle.textContent = language === 'zh' ? 'EN' : '中文';
+      }
+      applyLanguage(document.documentElement.dataset.uiLanguage || 'zh');
+      document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
+      });
+      document.querySelector('[data-language-toggle]')?.addEventListener('click', () => {
+        const next = document.documentElement.dataset.uiLanguage === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('ui-language', next); applyLanguage(next);
+      });
+    </script>
+  </body>
+</html>

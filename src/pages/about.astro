@@ -1,0 +1,8 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import UiText from '../components/UiText.astro';
+import { site } from '../config/site';
+---
+<BaseLayout title="关于我" description={site.bio}>
+  <section class="about-page"><p class="kicker"><UiText zh="关于作者" en="ABOUT" /></p><h1>{site.author}</h1><p class="about-lead"><UiText zh={site.bio} en={site.bioEn} /></p><div class="about-grid"><div class="prose"><h2><UiText zh="你好，很高兴在这里见到你。" en="Hello, nice to meet you." /></h2><p><UiText zh="这是一个为长期写作而留出的空间。这里会收集技术实践、项目复盘和偶尔的生活随笔。" en="This is a space reserved for long-form thinking: technical practice, project retrospectives, and occasional notes from life." /></p><p><UiText zh="此页内容已集中在站点配置中。发布前，请替换作者名称、简介、邮箱与链接。" en="This page is powered by the central site configuration. Replace the name, bio, email, and links before publishing." /></p></div><aside class="contact-card"><p>CONNECT</p><a href={`mailto:${site.email}`}>{site.email}</a><a href={site.social.github}>GitHub ↗</a><a href={site.social.x}>X / Twitter ↗</a></aside></div></section>
+</BaseLayout>

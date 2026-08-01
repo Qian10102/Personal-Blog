@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.astro/
+.env
+*.log
+
+#macOS system file filter
+.DS_Store/

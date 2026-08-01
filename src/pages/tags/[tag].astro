@@ -1,0 +1,9 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPublishedPosts } from '../../lib/posts';
+export async function getStaticPaths() { const tags = new Set((await getPublishedPosts()).flatMap((post) => post.data.tags)); return [...tags].map((tag) => ({ params: { tag } })); }
+const { tag } = Astro.params;
+const posts = (await getPublishedPosts()).filter((post) => post.data.tags.includes(tag!));
+---
+<BaseLayout title={`#${tag}`}><section class="page-intro"><p class="kicker">TAG</p><h1>#{tag}</h1></section><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>

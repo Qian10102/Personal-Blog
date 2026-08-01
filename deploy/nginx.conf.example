@@ -1,0 +1,24 @@
+server {
+    listen 80;
+    server_name zihan-server.com www.zihan-server.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name zihan-server.com www.zihan-server.com;
+    root /var/www/personal-blog;
+    index index.html;
+
+    # Tencent Cloud certificate files. Keep the private key readable only by root.
+    ssl_certificate /etc/nginx/certs/zihan-server.com_bundle.crt;
+    ssl_certificate_key /etc/nginx/certs/zihan-server.com.key;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+    location ~* \.(?:css|js|mjs|jpg|jpeg|gif|png|svg|ico|webp|woff2)$ {
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable";
+    }
+}
