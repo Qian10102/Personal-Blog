@@ -7,7 +7,7 @@ server {
 server {
     listen 443 ssl http2;
     server_name zihan-server.com www.zihan-server.com;
-    root /var/www/personal-blog;
+    root /home/ubuntu/personal-blog;
     index index.html;
 
     # Tencent Cloud certificate files. Keep the private key readable only by root.
