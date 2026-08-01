@@ -10,21 +10,21 @@ const latest = posts.filter((post) => !post.data.featured).slice(0, 6);
 ---
 <BaseLayout>
   <section class="hero reveal">
-    <p class="kicker"><UiText zh="个人技术博客" en="PERSONAL TECHNICAL JOURNAL" fr="JOURNAL TECHNIQUE PERSONNEL" /></p>
-    <h1><span data-ui-text data-zh="思考、代码与" data-en="Ideas, code, and" data-fr="Idées, code et">思考、代码与</span><br/><em data-ui-text data-zh="正在发生的事。" data-en="work in progress." data-fr="projets en cours.">正在发生的事。</em></h1>
-    <p class="hero-copy"><UiText zh={site.description} en={site.descriptionEn} fr={site.descriptionFr} /></p>
-    <a href="/about/" class="text-link"><UiText zh="认识作者" en="Meet the author" fr="Faire connaissance" /> →</a>
+    <p class="kicker"><UiText zh="个人技术博客" en="PERSONAL TECHNICAL JOURNAL" /></p>
+    <h1><span data-ui-text data-zh="思考、代码与" data-en="Ideas, code, and">思考、代码与</span><br/><em data-ui-text data-zh="正在发生的事。" data-en="work in progress.">正在发生的事。</em></h1>
+    <p class="hero-copy"><UiText zh={site.description} en={site.descriptionEn} /></p>
+    <a href="/about/" class="text-link"><UiText zh="认识作者" en="Meet the author" /> →</a>
   </section>
   {featured.length > 0 && <section class="section-block reveal">
-    <div class="section-heading"><p class="kicker"><UiText zh="编辑推荐" en="FEATURED" fr="À LA UNE" /></p></div>
+    <div class="section-heading"><p class="kicker"><UiText zh="编辑推荐" en="FEATURED" /></p></div>
     <div class="feature-grid">{featured.map((post) => <PostCard post={post} prominent />)}</div>
   </section>}
   <section class="section-block reveal">
-    <div class="section-heading"><h2><UiText zh="最新文章" en="Latest stories" fr="Derniers articles" /></h2><a href="/posts/" class="text-link"><UiText zh="查看全部" en="View all" fr="Tout voir" /> →</a></div>
+    <div class="section-heading"><h2><UiText zh="最新文章" en="Latest stories" /></h2><a href="/posts/" class="text-link"><UiText zh="查看全部" en="View all" /> →</a></div>
     <div class="post-grid">{latest.map((post) => <PostCard post={post} />)}</div>
   </section>
   <section class="category-band reveal">
-    <p class="kicker"><UiText zh="探索主题" en="EXPLORE TOPICS" fr="EXPLORER LES THÈMES" /></p>
+    <p class="kicker"><UiText zh="探索主题" en="EXPLORE TOPICS" /></p>
     <div>{site.categories.map((category) => <a href={`/categories/${encodeURIComponent(category)}/`}>{category}<span>↗</span></a>)}</div>
   </section>
 </BaseLayout>
