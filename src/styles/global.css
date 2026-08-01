@@ -23,7 +23,8 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
 
 .site-header { height: 88px; display: flex; align-items: center; border-bottom: 1px solid var(--line); gap: 36px; }
 .brand { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: -.03em; white-space: nowrap; }
-.brand span, .category-band a span { color: var(--accent); }
+.brand-name { color: #fff; }
+.brand-suffix, .brand-separator, .category-band a span { color: var(--accent); }
 nav { display: flex; gap: 22px; font-size: 14px; }
 nav a { position: relative; padding: 6px 0; color: var(--muted); transition: color 160ms ease; }
 nav a::after { position: absolute; right: 0; bottom: 1px; left: 0; height: 1px; background: currentColor; content: ''; transform: scaleX(0); transform-origin: right; transition: transform 180ms var(--ease-out); }

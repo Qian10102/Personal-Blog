@@ -4,7 +4,7 @@ import ThemeToggle from './ThemeToggle.astro';
 import UiText from './UiText.astro';
 ---
 <header class="site-header">
-  <a class="brand" href="/" aria-label={site.name}>{site.name}<span>·</span></a>
+  <a class="brand" href="/" data-ui-aria-label data-zh={site.name} data-en={site.nameEn} aria-label={site.name}><span class="brand-name" data-ui-text data-zh="钱子晗" data-en="Zihan's">钱子晗</span><span class="brand-suffix" data-ui-text data-zh="的blog" data-en=" blog">的blog</span><span class="brand-separator">·</span></a>
   <nav aria-label="Primary navigation">
     <a href="/"><UiText zh="首页" en="Home" /></a>
     <a href="/posts/"><UiText zh="文章" en="Articles" /></a>

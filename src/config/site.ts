@@ -1,6 +1,6 @@
 export const site = {
-  name: 'Zihan QIAN',
-  nameEn: 'Zihan QIAN',
+  name: '钱子晗的Blog',
+  nameEn: 'Zihan\'s Blog',
   description: '记录工程学习、交通物流与项目思考。',
   descriptionEn: 'Notes on engineering, transport, logistics and projects.',
   url: 'https://example.com',

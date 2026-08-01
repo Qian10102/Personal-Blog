@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import UiText from '../components/UiText.astro';
 import { site } from '../config/site';
 ---
-<BaseLayout title="关于我" description={site.bio}>
+<BaseLayout title={{ zh: '关于我', en: 'About' }} description={{ zh: site.bio, en: site.bioEn }}>
   <section class="about-page">
     <p class="kicker"><UiText zh="关于我" en="ABOUT" /></p>
     <h1>{site.author}</h1>

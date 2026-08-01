@@ -2,19 +2,25 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import { site } from '../config/site';
-interface Props { title?: string; description?: string; }
+type LocalizedText = { zh: string; en: string };
+interface Props { title?: string | LocalizedText; description?: string | LocalizedText; }
 const { title, description = site.description } = Astro.props;
-const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.description}`;
+const localize = (text: string | LocalizedText): LocalizedText => typeof text === 'string' ? { zh: text, en: text } : text;
+const localizedDescription = localize(description);
+const localizedTitle = title ? localize(title) : null;
+const pageTitle = localizedTitle
+  ? { zh: `${localizedTitle.zh} · ${site.name}`, en: `${localizedTitle.en} · ${site.nameEn}` }
+  : { zh: `${site.name} · ${site.description}`, en: `${site.nameEn} · ${site.descriptionEn}` };
 ---
 <!doctype html>
 <html lang="zh-CN" data-theme="light" data-ui-language="zh">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
+    <meta name="description" content={localizedDescription.zh} data-ui-description data-zh={localizedDescription.zh} data-en={localizedDescription.en} />
     <meta name="color-scheme" content="light dark" />
     <link rel="alternate" type="application/rss+xml" title={`${site.name} RSS`} href="/rss.xml" />
-    <title>{pageTitle}</title>
+    <title data-ui-title data-zh={pageTitle.zh} data-en={pageTitle.en}>{pageTitle.zh}</title>
     <script is:inline>
       const storedTheme = localStorage.getItem('theme');
       const theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -23,6 +29,10 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
       const language = localStorage.getItem('ui-language') || (browserLanguage.startsWith('zh') ? 'zh' : 'en');
       document.documentElement.dataset.uiLanguage = language;
       document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+      const pageTitle = document.querySelector<HTMLTitleElement>('[data-ui-title]');
+      if (pageTitle) document.title = pageTitle.dataset[language] || pageTitle.dataset.zh || '';
+      const pageDescription = document.querySelector<HTMLMetaElement>('[data-ui-description]');
+      if (pageDescription) pageDescription.content = pageDescription.dataset[language] || pageDescription.dataset.zh || '';
     </script>
   </head>
   <body>
@@ -38,6 +48,10 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
         document.querySelectorAll<HTMLElement>('[data-ui-text]').forEach((el) => el.textContent = el.dataset[language] || el.dataset.en || '');
         document.querySelectorAll<HTMLInputElement>('[data-ui-placeholder]').forEach((el) => el.placeholder = el.dataset[language] || el.dataset.en || '');
         document.querySelectorAll<HTMLElement>('[data-ui-aria-label]').forEach((el) => el.setAttribute('aria-label', el.dataset[language] || el.dataset.en || ''));
+        const pageTitle = document.querySelector<HTMLTitleElement>('[data-ui-title]');
+        if (pageTitle) document.title = pageTitle.dataset[language] || pageTitle.dataset.zh || '';
+        const pageDescription = document.querySelector<HTMLMetaElement>('[data-ui-description]');
+        if (pageDescription) pageDescription.content = pageDescription.dataset[language] || pageDescription.dataset.zh || '';
         const languageNames = { zh: '中文', en: 'English' };
         const current = document.querySelector<HTMLElement>('[data-language-current]');
         if (current) current.textContent = languageNames[language as keyof typeof languageNames] || languageNames.zh;
@@ -50,13 +64,6 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
       });
-      document.querySelectorAll<HTMLButtonElement>('[data-language-option]').forEach((option) => option.addEventListener('click', () => {
-        const language = option.dataset.languageOption;
-        if (!language) return;
-        localStorage.setItem('ui-language', language); applyLanguage(language);
-        const menu = document.querySelector<HTMLDetailsElement>('[data-language-menu]');
-        if (menu) menu.open = false;
-      }));
       document.querySelectorAll<HTMLButtonElement>('[data-language-option]').forEach((option) => option.addEventListener('click', () => {
         const language = option.dataset.languageOption;
         if (!language) return;
