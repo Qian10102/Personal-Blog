@@ -2,14 +2,16 @@
 import { site } from '../config/site';
 import ThemeToggle from './ThemeToggle.astro';
 import UiText from './UiText.astro';
+const pathname = Astro.url.pathname;
+const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 ---
 <header class="site-header">
   <a class="brand" href="/" aria-label={site.name}>{site.name}<span>·</span></a>
   <nav aria-label="Primary navigation">
-    <a href="/"><UiText zh="首页" en="Home" fr="Accueil" /></a>
-    <a href="/posts/"><UiText zh="文章" en="Articles" fr="Articles" /></a>
-    <a href="/search/"><UiText zh="搜索" en="Search" fr="Recherche" /></a>
-    <a href="/about/"><UiText zh="关于我" en="About" fr="À propos" /></a>
+    <a href="/" aria-current={isActive('/') ? 'page' : undefined}><UiText zh="首页" en="Home" fr="Accueil" /></a>
+    <a href="/posts/" aria-current={isActive('/posts/') ? 'page' : undefined}><UiText zh="文章" en="Articles" fr="Articles" /></a>
+    <a href="/search/" aria-current={isActive('/search/') ? 'page' : undefined}><UiText zh="搜索" en="Search" fr="Recherche" /></a>
+    <a href="/about/" aria-current={isActive('/about/') ? 'page' : undefined}><UiText zh="关于我" en="About" fr="À propos" /></a>
   </nav>
   <div class="header-actions">
     <button class="language-toggle" type="button" data-language-toggle>EN</button>
