@@ -13,14 +13,14 @@ const date = post.data.pubDate.toLocaleDateString(post.data.language === 'zh' ? 
 ---
 <BaseLayout title={post.data.title} description={post.data.description}>
   <article class="article-layout">
-    <header class="article-header"><p class="kicker">{post.data.category} · {post.data.language.toUpperCase()}</p><h1>{post.data.title}</h1><p class="article-deck">{post.data.description}</p><div class="article-meta"><time datetime={post.data.pubDate.toISOString()}>{date}</time><span>·</span><span>{readingMinutes(post.body || '')} <UiText zh="分钟阅读" en="min read" fr="min de lecture" /></span></div></header>
+    <header class="article-header"><p class="kicker">{post.data.category} · {post.data.language.toUpperCase()}</p><h1>{post.data.title}</h1><p class="article-deck">{post.data.description}</p><div class="article-meta"><time datetime={post.data.pubDate.toISOString()}>{date}</time><span>·</span><span>{readingMinutes(post.body || '')} <UiText zh="分钟阅读" en="min read" /></span></div></header>
     {post.data.cover && <img class="article-cover" src={post.data.cover} alt="" />}
     <div class="article-body-wrap">
-      {headings.length > 0 && <aside class="toc"><strong><UiText zh="目录" en="On this page" fr="Sur cette page" /></strong><ol>{headings.filter((item) => item.depth <= 3).map((item) => <li class={`depth-${item.depth}`}><a href={`#${item.slug}`}>{item.text}</a></li>)}</ol></aside>}
+      {headings.length > 0 && <aside class="toc"><strong><UiText zh="目录" en="On this page" /></strong><ol>{headings.filter((item) => item.depth <= 3).map((item) => <li class={`depth-${item.depth}`}><a href={`#${item.slug}`}>{item.text}</a></li>)}</ol></aside>}
       <div class="prose"><Content /></div>
     </div>
     <footer class="article-end"><ul class="tags">{post.data.tags.map((tag: string) => <li><a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a></li>)}</ul></footer>
-    <nav class="article-pagination">{posts[index + 1] && <a href={`/posts/${posts[index + 1].id}/`}><small><UiText zh="上一篇" en="Previous" fr="Précédent" /></small><span>← {posts[index + 1].data.title}</span></a>}{posts[index - 1] && <a href={`/posts/${posts[index - 1].id}/`}><small><UiText zh="下一篇" en="Next" fr="Suivant" /></small><span>{posts[index - 1].data.title} →</span></a>}</nav>
-    {related.length > 0 && <section class="related"><h2><UiText zh="相关文章" en="Related reading" fr="À lire aussi" /></h2><div class="post-grid">{related.map((item) => <a class="related-link" href={`/posts/${item.id}/`}>{item.data.title}<span>{item.data.category} →</span></a>)}</div></section>}
+    <nav class="article-pagination">{posts[index + 1] && <a href={`/posts/${posts[index + 1].id}/`}><small><UiText zh="上一篇" en="Previous" /></small><span>← {posts[index + 1].data.title}</span></a>}{posts[index - 1] && <a href={`/posts/${posts[index - 1].id}/`}><small><UiText zh="下一篇" en="Next" /></small><span>{posts[index - 1].data.title} →</span></a>}</nav>
+    {related.length > 0 && <section class="related"><h2><UiText zh="相关文章" en="Related reading" /></h2><div class="post-grid">{related.map((item) => <a class="related-link" href={`/posts/${item.id}/`}>{item.data.title}<span>{item.data.category} →</span></a>)}</div></section>}
   </article>
 </BaseLayout>

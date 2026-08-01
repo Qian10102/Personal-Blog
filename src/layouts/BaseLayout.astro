@@ -20,7 +20,7 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
       const theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.dataset.theme = theme;
       const browserLanguage = navigator.language.toLowerCase();
-      const language = localStorage.getItem('ui-language') || (browserLanguage.startsWith('zh') ? 'zh' : browserLanguage.startsWith('fr') ? 'fr' : 'en');
+      const language = localStorage.getItem('ui-language') || (browserLanguage.startsWith('zh') ? 'zh' : 'en');
       document.documentElement.dataset.uiLanguage = language;
       document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
     </script>
@@ -34,23 +34,29 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
     <script>
       function applyLanguage(language: string) {
         document.documentElement.dataset.uiLanguage = language;
-        document.documentElement.lang = language === 'zh' ? 'zh-CN' : language === 'fr' ? 'fr' : 'en';
+        document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
         document.querySelectorAll<HTMLElement>('[data-ui-text]').forEach((el) => el.textContent = el.dataset[language] || el.dataset.en || '');
         document.querySelectorAll<HTMLInputElement>('[data-ui-placeholder]').forEach((el) => el.placeholder = el.dataset[language] || el.dataset.en || '');
         document.querySelectorAll<HTMLElement>('[data-ui-aria-label]').forEach((el) => el.setAttribute('aria-label', el.dataset[language] || el.dataset.en || ''));
-        const toggle = document.querySelector<HTMLElement>('[data-language-toggle]');
-        if (toggle) toggle.textContent = language === 'zh' ? 'EN' : language === 'en' ? 'FR' : '中文';
+        const languageNames = { zh: '中文', en: 'English' };
+        const current = document.querySelector<HTMLElement>('[data-language-current]');
+        if (current) current.textContent = languageNames[language as keyof typeof languageNames] || languageNames.zh;
+        document.querySelectorAll<HTMLButtonElement>('[data-language-option]').forEach((option) => {
+          option.setAttribute('aria-current', String(option.dataset.languageOption === language));
+        });
       }
       applyLanguage(document.documentElement.dataset.uiLanguage || 'zh');
       document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
       });
-      document.querySelector('[data-language-toggle]')?.addEventListener('click', () => {
-        const current = document.documentElement.dataset.uiLanguage;
-        const next = current === 'zh' ? 'en' : current === 'en' ? 'fr' : 'zh';
-        localStorage.setItem('ui-language', next); applyLanguage(next);
-      });
+      document.querySelectorAll<HTMLButtonElement>('[data-language-option]').forEach((option) => option.addEventListener('click', () => {
+        const language = option.dataset.languageOption;
+        if (!language) return;
+        localStorage.setItem('ui-language', language); applyLanguage(language);
+        const menu = document.querySelector<HTMLDetailsElement>('[data-language-menu]');
+        if (menu) menu.open = false;
+      }));
     </script>
   </body>
 </html>

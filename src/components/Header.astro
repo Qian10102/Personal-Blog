@@ -6,13 +6,19 @@ import UiText from './UiText.astro';
 <header class="site-header">
   <a class="brand" href="/" aria-label={site.name}>{site.name}<span>·</span></a>
   <nav aria-label="Primary navigation">
-    <a href="/"><UiText zh="首页" en="Home" fr="Accueil" /></a>
-    <a href="/posts/"><UiText zh="文章" en="Articles" fr="Articles" /></a>
-    <a href="/search/"><UiText zh="搜索" en="Search" fr="Recherche" /></a>
-    <a href="/about/"><UiText zh="关于我" en="About" fr="À propos" /></a>
+    <a href="/"><UiText zh="首页" en="Home" /></a>
+    <a href="/posts/"><UiText zh="文章" en="Articles" /></a>
+    <a href="/search/"><UiText zh="搜索" en="Search" /></a>
+    <a href="/about/"><UiText zh="关于我" en="About" /></a>
   </nav>
   <div class="header-actions">
-    <button class="language-toggle" type="button" data-language-toggle>EN</button>
+    <details class="language-menu" data-language-menu>
+      <summary aria-label="选择界面语言"><span data-language-current>中文</span><span class="language-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="language-options" aria-label="选择界面语言">
+        <button type="button" data-language-option="zh">中文</button>
+        <button type="button" data-language-option="en">English</button>
+      </div>
+    </details>
     <ThemeToggle />
   </div>
 </header>

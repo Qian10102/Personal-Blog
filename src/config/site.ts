@@ -3,12 +3,10 @@ export const site = {
   nameEn: 'Zihan QIAN',
   description: '记录工程学习、交通物流与项目思考。',
   descriptionEn: 'Notes on engineering, transport, logistics and projects.',
-  descriptionFr: "Notes sur l'ingénierie, le transport, la logistique et les projets.",
   url: 'https://example.com',
   author: 'Zihan QIAN',
   bio: '北京航空航天大学交通运输与物流专业学生，关注工程实践、交通与物流。',
   bioEn: 'Transport and Logistics student at Beihang University, interested in engineering practice, transport and logistics.',
-  bioFr: "Étudiant en transport et logistique à l'Université Beihang, intéressé par la pratique de l'ingénierie, le transport et la logistique.",
   email: 'zihan.qian.insa@gmail.com',
   social: {
     github: 'https://github.com/your-handle',
@@ -17,7 +15,7 @@ export const site = {
   categories: ['技术', '随笔', '项目'],
 } as const;
 
-export type UiLanguage = 'zh' | 'en' | 'fr';
+export type UiLanguage = 'zh' | 'en';
 
 export const ui = {
   zh: {
@@ -35,13 +33,5 @@ export const ui = {
     noArticles: 'No articles yet.', tableOfContents: 'On this page', related: 'Related reading',
     previous: 'Previous', next: 'Next', language: 'Language', searchHint: 'Search titles, summaries, or tags…',
     searchEmpty: 'No matching articles.', backHome: 'Back home', toggleTheme: 'Toggle theme',
-  },
-  fr: {
-    home: 'Accueil', articles: 'Articles', about: 'À propos', search: 'Recherche',
-    latest: 'Derniers articles', featured: 'À la une', categories: 'Thèmes',
-    allArticles: 'Tous les articles', readMore: "Lire l'article", minutes: 'min de lecture',
-    noArticles: 'Aucun article pour le moment.', tableOfContents: 'Sur cette page', related: 'À lire aussi',
-    previous: 'Précédent', next: 'Suivant', language: 'Langue', searchHint: 'Rechercher un titre, un résumé ou un tag…',
-    searchEmpty: 'Aucun article correspondant.', backHome: "Retour à l'accueil", toggleTheme: 'Changer le thème',
   },
 } as const;

@@ -7,4 +7,4 @@ export async function getStaticPaths() { const tags = new Set((await getPublishe
 const { tag } = Astro.params;
 const posts = (await getPublishedPosts()).filter((post) => post.data.tags.includes(tag!));
 ---
-<BaseLayout title={`#${tag}`}><section class="page-intro"><p class="kicker"><UiText zh="标签" en="TAG" fr="ÉTIQUETTE" /></p><h1>#{tag}</h1></section><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>
+<BaseLayout title={`#${tag}`}><section class="page-intro"><p class="kicker"><UiText zh="标签" en="TAG" /></p><h1>#{tag}</h1></section><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>
