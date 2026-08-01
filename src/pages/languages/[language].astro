@@ -1,10 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
+import UiText from '../../components/UiText.astro';
 import { getPublishedPosts } from '../../lib/posts';
 export async function getStaticPaths() { return ['zh', 'en'].map((language) => ({ params: { language } })); }
 const { language } = Astro.params as { language: 'zh' | 'en' };
 const posts = (await getPublishedPosts()).filter((post) => post.data.language === language);
 const heading = language === 'zh' ? '中文文章' : 'English articles';
 ---
-<BaseLayout title={heading}><section class="page-intro"><p class="kicker">LANGUAGE</p><h1>{heading}</h1></section><div class="filter-row"><a href="/posts/">All</a><a href="/languages/zh/" class:list={{active: language === 'zh'}}>中文</a><a href="/languages/en/" class:list={{active: language === 'en'}}>English</a></div><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>
+<BaseLayout title={heading}><section class="page-intro"><p class="kicker"><UiText zh="语言" en="LANGUAGE" fr="LANGUE" /></p><h1>{heading}</h1></section><div class="filter-row"><a href="/posts/"><UiText zh="全部" en="All" fr="Tous" /></a><a href="/languages/zh/" class:list={{active: language === 'zh'}}><UiText zh="中文" en="Chinese" fr="Chinois" /></a><a href="/languages/en/" class:list={{active: language === 'en'}}><UiText zh="英文" en="English" fr="Anglais" /></a></div><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>

@@ -5,34 +5,34 @@ import { site } from '../config/site';
 ---
 <BaseLayout title="关于我" description={site.bio}>
   <section class="about-page">
-    <p class="kicker"><UiText zh="关于我" en="ABOUT" /></p>
+    <p class="kicker"><UiText zh="关于我" en="ABOUT" fr="À PROPOS" /></p>
     <h1>{site.author}</h1>
-    <p class="about-lead"><UiText zh={site.bio} en={site.bioEn} /></p>
+    <p class="about-lead"><UiText zh={site.bio} en={site.bioEn} fr={site.bioFr} /></p>
 
     <div class="about-grid">
       <div class="prose">
-        <h2><UiText zh="你好，很高兴在这里见到你。" en="Hello, nice to meet you." /></h2>
-        <p><UiText zh="我目前在杭州的北京航空航天大学学习交通运输与物流。我关心工程实践、交通与物流，也在这个空间记录学习过程与项目思考。" en="I am currently studying Transport and Logistics at Beihang University in Hangzhou, China. I am interested in engineering practice, transport and logistics, and use this space to share my learning and project reflections." /></p>
+        <h2><UiText zh="你好，很高兴在这里见到你。" en="Hello, nice to meet you." fr="Bonjour, ravi de vous rencontrer." /></h2>
+        <p><UiText zh="我目前在杭州的北京航空航天大学学习交通运输与物流。我关心工程实践、交通与物流，也在这个空间记录学习过程与项目思考。" en="I am currently studying Transport and Logistics at Beihang University in Hangzhou, China. I am interested in engineering practice, transport and logistics, and use this space to share my learning and project reflections." fr="J'étudie actuellement le transport et la logistique à l'Université Beihang, à Hangzhou, en Chine. Je m'intéresse à la pratique de l'ingénierie, au transport et à la logistique, et je partage ici mon parcours d'apprentissage et mes réflexions sur les projets." /></p>
 
-        <h2><UiText zh="教育经历" en="Education" /></h2>
+        <h2><UiText zh="教育经历" en="Education" fr="Formation" /></h2>
         <h3>INSA Rouen Normandie</h3>
-        <p><UiText zh="2025 · 法国鲁昂 · 工程师项目 STPI1（工程师学习第一年）" en="2025 · Rouen, France · STPI1 engineering programme (first year)" /></p>
+        <p><UiText zh="2025 · 法国鲁昂 · 工程师项目 STPI1（工程师学习第一年）" en="2025 · Rouen, France · STPI1 engineering programme (first year)" fr="2025 · Rouen, France · Programme d'ingénieur STPI1 (première année)" /></p>
         <h3>Beihang University</h3>
-        <p><UiText zh="2024-2025，2026 至今 · 中国杭州 · 交通运输与物流专业" en="2024-2025, 2026-present · Hangzhou, China · Transport and Logistics" /></p>
-        <h3><UiText zh="人大附中" en="High School Affiliated to Renmin University of China" /></h3>
-        <p><UiText zh="2024 · 中国北京 · 高中毕业，成绩 653/750" en="2024 · Beijing, China · High school diploma, score: 653/750" /></p>
+        <p><UiText zh="2024-2025，2026 至今 · 中国杭州 · 交通运输与物流专业" en="2024-2025, 2026-present · Hangzhou, China · Transport and Logistics" fr="2024-2025, depuis 2026 · Hangzhou, Chine · Transport et logistique" /></p>
+        <h3><UiText zh="人大附中" en="High School Affiliated to Renmin University of China" fr="Lycée rattaché à l'Université Renmin de Chine" /></h3>
+        <p><UiText zh="2024 · 中国北京 · 高中毕业，成绩 653/750" en="2024 · Beijing, China · High school diploma, score: 653/750" fr="2024 · Pékin, Chine · Baccalauréat, score : 653/750" /></p>
 
-        <h2><UiText zh="能力与语言" en="Skills & languages" /></h2>
-        <p><UiText zh="熟练使用 Microsoft Word、Excel、PowerPoint 与 SolidWorks；具备团队协作经验。中文为母语，英语 B2，法语 B1。" en="Proficient with Microsoft Word, Excel, PowerPoint and SolidWorks, with experience working in teams. Native Chinese speaker; English B2 and French B1." /></p>
+        <h2><UiText zh="能力与语言" en="Skills & languages" fr="Compétences et langues" /></h2>
+        <p><UiText zh="熟练使用 Microsoft Word、Excel、PowerPoint 与 SolidWorks；具备团队协作经验。中文为母语，英语 B2，法语 B1。" en="Proficient with Microsoft Word, Excel, PowerPoint and SolidWorks, with experience working in teams. Native Chinese speaker; English B2 and French B1." fr="Maîtrise de Microsoft Word, Excel, PowerPoint et SolidWorks, avec une expérience du travail en équipe. Chinois langue maternelle ; anglais B2 et français B1." /></p>
 
-        <h2><UiText zh="经历与兴趣" en="Experience & interests" /></h2>
-        <p><UiText zh="曾协助学生委员会筹备新年晚会的节目安排。课余时间喜欢电子游戏、旅行与高山徒步。" en="I helped the student committee organise performances for a New Year event. Outside of study, I enjoy video games, travel and high-altitude hiking." /></p>
+        <h2><UiText zh="经历与兴趣" en="Experience & interests" fr="Expérience et centres d'intérêt" /></h2>
+        <p><UiText zh="曾协助学生委员会筹备新年晚会的节目安排。课余时间喜欢电子游戏、旅行与高山徒步。" en="I helped the student committee organise performances for a New Year event. Outside of study, I enjoy video games, travel and high-altitude hiking." fr="J'ai aidé le comité étudiant à organiser les animations d'un événement du Nouvel An. En dehors des études, j'aime les jeux vidéo, les voyages et la randonnée en haute montagne." /></p>
       </div>
 
       <aside class="contact-card">
-        <p><UiText zh="联系" en="CONTACT" /></p>
+        <p><UiText zh="联系" en="CONTACT" fr="CONTACT" /></p>
         <a href={`mailto:${site.email}`}>{site.email}</a>
-        <span><UiText zh="中国杭州" en="Hangzhou, China" /></span>
+        <span><UiText zh="中国杭州" en="Hangzhou, China" fr="Hangzhou, Chine" /></span>
       </aside>
     </div>
   </section>

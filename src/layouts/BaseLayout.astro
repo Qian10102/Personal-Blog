@@ -19,7 +19,8 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
       const storedTheme = localStorage.getItem('theme');
       const theme = storedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       document.documentElement.dataset.theme = theme;
-      const language = localStorage.getItem('ui-language') || (navigator.language.startsWith('zh') ? 'zh' : 'en');
+      const browserLanguage = navigator.language.toLowerCase();
+      const language = localStorage.getItem('ui-language') || (browserLanguage.startsWith('zh') ? 'zh' : browserLanguage.startsWith('fr') ? 'fr' : 'en');
       document.documentElement.dataset.uiLanguage = language;
       document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
     </script>
@@ -33,10 +34,12 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
     <script>
       function applyLanguage(language: string) {
         document.documentElement.dataset.uiLanguage = language;
-        document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
-        document.querySelectorAll<HTMLElement>('[data-ui-text]').forEach((el) => el.textContent = el.dataset[language] || '');
+        document.documentElement.lang = language === 'zh' ? 'zh-CN' : language === 'fr' ? 'fr' : 'en';
+        document.querySelectorAll<HTMLElement>('[data-ui-text]').forEach((el) => el.textContent = el.dataset[language] || el.dataset.en || '');
+        document.querySelectorAll<HTMLInputElement>('[data-ui-placeholder]').forEach((el) => el.placeholder = el.dataset[language] || el.dataset.en || '');
+        document.querySelectorAll<HTMLElement>('[data-ui-aria-label]').forEach((el) => el.setAttribute('aria-label', el.dataset[language] || el.dataset.en || ''));
         const toggle = document.querySelector<HTMLElement>('[data-language-toggle]');
-        if (toggle) toggle.textContent = language === 'zh' ? 'EN' : '中文';
+        if (toggle) toggle.textContent = language === 'zh' ? 'EN' : language === 'en' ? 'FR' : '中文';
       }
       applyLanguage(document.documentElement.dataset.uiLanguage || 'zh');
       document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
@@ -44,7 +47,8 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
         document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
       });
       document.querySelector('[data-language-toggle]')?.addEventListener('click', () => {
-        const next = document.documentElement.dataset.uiLanguage === 'zh' ? 'en' : 'zh';
+        const current = document.documentElement.dataset.uiLanguage;
+        const next = current === 'zh' ? 'en' : current === 'en' ? 'fr' : 'zh';
         localStorage.setItem('ui-language', next); applyLanguage(next);
       });
     </script>

@@ -1,10 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
+import UiText from '../../components/UiText.astro';
 import { site } from '../../config/site';
 import { getPublishedPosts } from '../../lib/posts';
 export async function getStaticPaths() { return site.categories.map((category) => ({ params: { category } })); }
 const { category } = Astro.params;
 const posts = (await getPublishedPosts()).filter((post) => post.data.category === category);
 ---
-<BaseLayout title={category}><section class="page-intro"><p class="kicker">CATEGORY</p><h1>{category}</h1></section><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>
+<BaseLayout title={category}><section class="page-intro"><p class="kicker"><UiText zh="分类" en="CATEGORY" fr="CATÉGORIE" /></p><h1>{category}</h1></section><div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div></BaseLayout>

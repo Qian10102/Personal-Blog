@@ -14,7 +14,7 @@ const date = data.pubDate.toLocaleDateString(data.language === 'zh' ? 'zh-CN' : 
     <p>{data.description}</p>
     <div class="post-footer">
       <ul class="tags">{data.tags.slice(0, 3).map((tag) => <li><a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a></li>)}</ul>
-      <a class="text-link" href={`/posts/${id}/`}><UiText zh="阅读全文" en="Read article" /> <span aria-hidden="true">→</span></a>
+      <a class="text-link" href={`/posts/${id}/`}><UiText zh="阅读全文" en="Read article" fr="Lire l'article" /> <span aria-hidden="true">→</span></a>
     </div>
   </div>
 </article>
