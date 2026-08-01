@@ -57,6 +57,13 @@ const pageTitle = title ? `${title} · ${site.name}` : `${site.name} · ${site.d
         const menu = document.querySelector<HTMLDetailsElement>('[data-language-menu]');
         if (menu) menu.open = false;
       }));
+      document.querySelectorAll<HTMLButtonElement>('[data-language-option]').forEach((option) => option.addEventListener('click', () => {
+        const language = option.dataset.languageOption;
+        if (!language) return;
+        localStorage.setItem('ui-language', language); applyLanguage(language);
+        const menu = document.querySelector<HTMLDetailsElement>('[data-language-menu]');
+        if (menu) menu.open = false;
+      }));
     </script>
   </body>
 </html>

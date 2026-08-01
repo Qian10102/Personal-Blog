@@ -2,6 +2,8 @@
 import { site } from '../config/site';
 import ThemeToggle from './ThemeToggle.astro';
 import UiText from './UiText.astro';
+const pathname = Astro.url.pathname;
+const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 ---
 <header class="site-header">
   <a class="brand" href="/" aria-label={site.name}>{site.name}<span>·</span></a>
