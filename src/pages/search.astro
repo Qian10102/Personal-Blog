@@ -1,26 +1,84 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import UiText from '../components/UiText.astro';
-import { getPublishedPosts } from '../lib/posts';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import UiText from "../components/UiText.astro";
+import { getPublishedPosts } from "../lib/posts";
 const posts = await getPublishedPosts();
-const searchIndex = posts.map((post) => ({ title: post.data.title, description: post.data.description, tags: post.data.tags, category: post.data.category, language: post.data.language, url: `/posts/${post.id}/` }));
+const searchIndex = posts.map((post) => ({
+  title: post.data.title,
+  description: post.data.description,
+  tags: post.data.tags,
+  category: post.data.category,
+  language: post.data.language,
+  url: `/posts/${post.id}/`,
+}));
 ---
-<BaseLayout title={{ zh: '搜索', en: 'Search' }}>
-  <section class="page-intro"><p class="kicker"><UiText zh="文章检索" en="ARTICLE SEARCH" /></p><h1><UiText zh="找到你在寻找的东西。" en="Find what you're looking for." /></h1></section>
-  <div class="search-box"><input type="search" data-search data-ui-placeholder data-zh="搜索标题、摘要或标签…" data-en="Search titles, summaries or tags…" placeholder="搜索标题、摘要或标签…" data-ui-aria-label data-zh="搜索" data-en="Search" aria-label="搜索" autofocus /><span>⌕</span></div>
-  <p class="search-status" data-search-status></p><div class="search-results" data-search-results></div>
+
+<BaseLayout title={{ zh: "搜索", en: "Search" }}>
+  <section class="page-intro">
+    <p class="kicker"><UiText zh="文章检索" en="ARTICLE SEARCH" /></p><h1>
+      <UiText zh="找到你在寻找的东西。" en="Find what you're looking for." />
+    </h1>
+  </section>
+  <div class="search-box">
+    <input
+      type="search"
+      data-search
+      data-ui-placeholder
+      data-zh="搜索标题、摘要或标签…"
+      data-en="Search titles, summaries or tags…"
+      placeholder="搜索标题、摘要或标签…"
+      data-ui-aria-label
+      data-zh="搜索"
+      data-en="Search"
+      aria-label="搜索"
+      autofocus
+    /><span>⌕</span>
+  </div>
+  <p class="search-status" data-search-status></p><div
+    class="search-results"
+    data-search-results
+  >
+  </div>
 </BaseLayout>
 <script is:inline define:vars={{ searchIndex }}>
-  const input = document.querySelector('[data-search]');
-  const results = document.querySelector('[data-search-results]');
-  const status = document.querySelector('[data-search-status]');
-  const escaped = (text) => text.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' })[char]);
-  input?.addEventListener('input', () => {
+  const input = document.querySelector("[data-search]");
+  const results = document.querySelector("[data-search-results]");
+  const status = document.querySelector("[data-search-status]");
+  const escaped = (text) =>
+    text.replace(
+      /[&<>'"]/g,
+      (char) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "'": "&#039;",
+          '"': "&quot;",
+        })[char],
+    );
+  input?.addEventListener("input", () => {
     const query = input.value.trim().toLowerCase();
-    const matches = query ? searchIndex.filter((post) => [post.title, post.description, post.category, ...post.tags].join(' ').toLowerCase().includes(query)) : [];
-    const language = document.documentElement.dataset.uiLanguage || 'en';
-    const resultLabel = language === 'zh' ? '条结果' : ' results';
-    status.textContent = query ? `${matches.length}${resultLabel}` : '';
-    results.innerHTML = matches.map((post) => `<a class="search-result" href="${post.url}"><small>${escaped(post.category)} · ${post.language.toUpperCase()}</small><strong>${escaped(post.title)}</strong><span>${escaped(post.description)}</span></a>`).join('');
+    const matches = query
+      ? searchIndex.filter((post) =>
+          [post.title, post.description, post.category, ...post.tags]
+            .join(" ")
+            .toLowerCase()
+            .includes(query),
+        )
+      : [];
+    const language = document.documentElement.dataset.uiLanguage || "en";
+    const resultLabel = language === "zh" ? "条结果" : " results";
+    status.textContent = query ? `${matches.length}${resultLabel}` : "";
+    results.innerHTML = matches
+      .map((post) =>
+        [
+          `<a class="search-result" href="${post.url}">`,
+          `<small>${escaped(post.category)} · ${post.language.toUpperCase()}</small>`,
+          `<strong>${escaped(post.title)}</strong>`,
+          `<span>${escaped(post.description)}</span>`,
+          "</a>",
+        ].join(""),
+      )
+      .join("");
   });
 </script>

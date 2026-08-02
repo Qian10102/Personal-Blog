@@ -1,12 +1,23 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import UiText from '../../components/UiText.astro';
-import { getPublishedPosts } from '../../lib/posts';
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostCard from "../../components/PostCard.astro";
+import UiText from "../../components/UiText.astro";
+import { getPublishedPosts } from "../../lib/posts";
 const posts = await getPublishedPosts();
 ---
-<BaseLayout title={{ zh: '文章', en: 'Articles' }}>
-  <section class="page-intro"><p class="kicker"><UiText zh="文章归档" en="ARCHIVE" /></p><h1><UiText zh="所有文章" en="All articles" /></h1></section>
-  <div class="filter-row"><a href="/posts/" class="active"><UiText zh="全部" en="All" /></a><a href="/languages/zh/"><UiText zh="中文" en="Chinese" /></a><a href="/languages/en/"><UiText zh="英文" en="English" /></a></div>
-  <div class="post-grid archive-grid">{posts.map((post) => <PostCard post={post} />)}</div>
+
+<BaseLayout title={{ zh: "文章", en: "Articles" }}>
+  <section class="page-intro">
+    <p class="kicker"><UiText zh="文章归档" en="ARCHIVE" /></p><h1>
+      <UiText zh="所有文章" en="All articles" />
+    </h1>
+  </section>
+  <div class="filter-row">
+    <a href="/posts/" class="active"><UiText zh="全部" en="All" /></a><a
+      href="/languages/zh/"><UiText zh="中文" en="Chinese" /></a
+    ><a href="/languages/en/"><UiText zh="英文" en="English" /></a>
+  </div>
+  <div class="post-grid archive-grid">
+    {posts.map((post) => <PostCard post={post} />)}
+  </div>
 </BaseLayout>

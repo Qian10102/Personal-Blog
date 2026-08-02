@@ -1,20 +1,46 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import UiText from './UiText.astro';
-interface Props { post: CollectionEntry<'posts'>; prominent?: boolean; }
+import type { CollectionEntry } from "astro:content";
+import UiText from "./UiText.astro";
+interface Props {
+  post: CollectionEntry<"posts">;
+  prominent?: boolean;
+}
 const { post, prominent = false } = Astro.props;
 const { data, id } = post;
-const date = data.pubDate.toLocaleDateString(data.language === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+const date = data.pubDate.toLocaleDateString(
+  data.language === "zh" ? "zh-CN" : "en-US",
+  { year: "numeric", month: "short", day: "numeric" },
+);
 ---
-<article class:list={['post-card', { prominent }]}>
-  {data.cover && <img class="post-cover" src={data.cover} alt="" loading="lazy" />}
+
+<article class:list={["post-card", { prominent }]}>
+  {
+    data.cover && (
+      <img class="post-cover" src={data.cover} alt="" loading="lazy" />
+    )
+  }
   <div class="post-card-content">
-    <div class="eyebrow"><span>{data.category}</span><span>·</span><time datetime={data.pubDate.toISOString()}>{date}</time><span>·</span><span>{data.language.toUpperCase()}</span></div>
+    <div class="eyebrow">
+      <span>{data.category}</span><span>·</span><time
+        datetime={data.pubDate.toISOString()}>{date}</time
+      ><span>·</span><span>{data.language.toUpperCase()}</span>
+    </div>
     <h2><a href={`/posts/${id}/`}>{data.title}</a></h2>
     <p>{data.description}</p>
     <div class="post-footer">
-      <ul class="tags">{data.tags.slice(0, 3).map((tag) => <li><a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a></li>)}</ul>
-      <a class="text-link" href={`/posts/${id}/`}><UiText zh="阅读全文" en="Read article" /> <span aria-hidden="true">→</span></a>
+      <ul class="tags">
+        {
+          data.tags.slice(0, 3).map((tag) => (
+            <li>
+              <a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a>
+            </li>
+          ))
+        }
+      </ul>
+      <a class="text-link" href={`/posts/${id}/`}
+        ><UiText zh="阅读全文" en="Read article" />
+        <span aria-hidden="true">→</span></a
+      >
     </div>
   </div>
 </article>

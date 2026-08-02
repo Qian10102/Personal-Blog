@@ -1,5 +1,9 @@
 ---
-interface Props { zh: string; en: string; }
+interface Props {
+  zh: string;
+  en: string;
+}
 const { zh, en } = Astro.props;
 ---
+
 <span data-ui-text data-zh={zh} data-en={en}>{zh}</span>
