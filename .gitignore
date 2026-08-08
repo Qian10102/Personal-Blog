@@ -3,6 +3,7 @@ dist/
 .astro/
 .env
 *.log
+github-profile/
 
 #macOS system file filter
 .DS_Store/

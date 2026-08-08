@@ -72,7 +72,10 @@ const pageTitle = localizedTitle
       <Header />
       <main><slot /></main>
       <footer class="site-footer">
-        <span>© {new Date().getFullYear()} {site.name}</span><a href="/rss.xml"
+        <span>© {new Date().getFullYear()} {site.name}</span>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer"
+          >京ICP备2026048723号</a
+        ><a href="/rss.xml"
           >RSS</a
         >
       </footer>
