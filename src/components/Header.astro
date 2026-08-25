@@ -26,15 +26,29 @@ import UiText from "./UiText.astro";
   </nav>
   <div class="header-actions">
     <details class="language-menu" data-language-menu>
-      <summary aria-label="选择界面语言"
-        ><span data-language-current>中文</span><span
-          class="language-chevron"
-          aria-hidden="true">⌄</span
-        ></summary
+      <summary
+        data-language-summary
+        data-ui-aria-label
+        data-zh="选择界面语言"
+        data-en="Choose interface language"
+        aria-label="选择界面语言"
+        aria-controls="language-options"
+        aria-expanded="false"><span data-language-current>中文</span></summary
       >
-      <div class="language-options" aria-label="选择界面语言">
-        <button type="button" data-language-option="zh">中文</button>
-        <button type="button" data-language-option="en">English</button>
+      <div
+        id="language-options"
+        class="language-options"
+        data-ui-aria-label
+        data-zh="选择界面语言"
+        data-en="Choose interface language"
+        aria-label="选择界面语言"
+      >
+        <button type="button" data-language-option="zh" aria-current="true">
+          中文
+        </button>
+        <button type="button" data-language-option="en" aria-current="false">
+          English
+        </button>
       </div>
     </details>
     <ThemeToggle />
