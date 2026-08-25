@@ -10,7 +10,7 @@ import { site } from "../config/site";
 >
   <section class="about-page">
     <p class="kicker"><UiText zh="关于我" en="ABOUT" /></p>
-    <h1>{site.author}</h1>
+    <h1><UiText zh={site.author} en={site.authorEN} /></h1>
     <p class="about-lead"><UiText zh={site.bio} en={site.bioEn} /></p>
 
     <div class="about-grid">
