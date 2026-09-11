@@ -35,12 +35,12 @@ const date = post.data.pubDate.toLocaleDateString(
       </p><h1>{post.data.title}</h1><p class="article-deck">
         {post.data.description}
       </p><div class="article-meta">
-        <time datetime={post.data.pubDate.toISOString()}>{date}</time><span
-          >·</span
-        ><span
-          >{readingMinutes(post.body || "")}
-          <UiText zh="分钟阅读" en="min read" /></span
-        >
+        <time datetime={post.data.pubDate.toISOString()}>{date}</time><span>
+          ·
+        </span><span>
+          {readingMinutes(post.body || "")}
+          <UiText zh="分钟阅读" en="min read" />
+        </span>
       </div>
     </header>
     {
@@ -51,9 +51,9 @@ const date = post.data.pubDate.toLocaleDateString(
     <div class="article-body-wrap">
       {
         headings.length > 0 && (
-          <aside class="toc">
+          <aside class="toc" aria-labelledby="table-of-contents-title">
             <>
-              <strong>
+              <strong id="table-of-contents-title">
                 <UiText zh="目录" en="On this page" />
               </strong>
               <ol>

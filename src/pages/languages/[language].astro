@@ -16,20 +16,26 @@ const heading =
     : { zh: "英文文章", en: "English articles" };
 ---
 
-<BaseLayout title={heading}
-  ><section class="page-intro">
-    <p class="kicker"><UiText zh="语言" en="LANGUAGE" /></p><h1>
+<BaseLayout title={heading}>
+  <section class="page-intro">
+    <p class="kicker"><UiText zh="语言" en="LANGUAGE" /></p>
+    <h1>
       <UiText zh={heading.zh} en={heading.en} />
     </h1>
-  </section><div class="filter-row">
-    <a href="/posts/"><UiText zh="全部" en="All" /></a><a
+  </section>
+  <div class="filter-row">
+    <a href="/posts/"><UiText zh="全部" en="All" /></a>
+    <a
       href="/languages/zh/"
       class:list={{ active: language === "zh" }}
-      ><UiText zh="中文" en="Chinese" /></a
-    ><a href="/languages/en/" class:list={{ active: language === "en" }}
-      ><UiText zh="英文" en="English" /></a
     >
-  </div><div class="post-grid archive-grid">
+      <UiText zh="中文" en="Chinese" />
+    </a>
+    <a href="/languages/en/" class:list={{ active: language === "en" }}>
+      <UiText zh="英文" en="English" />
+    </a>
+  </div>
+  <div class="post-grid archive-grid">
     {posts.map((post) => <PostCard post={post} />)}
-  </div></BaseLayout
->
+  </div>
+</BaseLayout>

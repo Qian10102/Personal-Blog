@@ -32,13 +32,15 @@ const searchIndex = posts.map((post) => ({
       data-en="Search"
       aria-label="搜索"
       autofocus
-    /><span>⌕</span>
+    />
+    <span aria-hidden="true">⌕</span>
   </div>
-  <p class="search-status" data-search-status></p><div
+  <p class="search-status" data-search-status role="status" aria-live="polite"></p>
+  <div
     class="search-results"
     data-search-results
-  >
-  </div>
+    role="list"
+  ></div>
 </BaseLayout>
 <script is:inline define:vars={{ searchIndex }}>
   const input = document.querySelector("[data-search]");
@@ -56,7 +58,9 @@ const searchIndex = posts.map((post) => ({
           '"': "&quot;",
         })[char],
     );
-  input?.addEventListener("input", () => {
+  function renderSearch() {
+    if (!input || !results || !status) return;
+
     const query = input.value.trim().toLowerCase();
     const matches = query
       ? searchIndex.filter((post) =>
@@ -72,7 +76,7 @@ const searchIndex = posts.map((post) => ({
     results.innerHTML = matches
       .map((post) =>
         [
-          `<a class="search-result" href="${post.url}">`,
+          `<a class="search-result" href="${post.url}" role="listitem">`,
           `<small>${escaped(post.category)} · ${post.language.toUpperCase()}</small>`,
           `<strong>${escaped(post.title)}</strong>`,
           `<span>${escaped(post.description)}</span>`,
@@ -80,5 +84,8 @@ const searchIndex = posts.map((post) => ({
         ].join(""),
       )
       .join("");
-  });
+  }
+
+  input?.addEventListener("input", renderSearch);
+  document.addEventListener("ui-language-change", renderSearch);
 </script>

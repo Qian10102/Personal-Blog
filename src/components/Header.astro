@@ -2,6 +2,17 @@
 import { site } from "../config/site";
 import ThemeToggle from "./ThemeToggle.astro";
 import UiText from "./UiText.astro";
+
+const navigation = [
+  { href: "/", zh: "首页", en: "Home" },
+  { href: "/posts/", zh: "文章", en: "Articles" },
+  { href: "/search/", zh: "搜索", en: "Search" },
+  { href: "/about/", zh: "关于我", en: "About" },
+] as const;
+const isCurrentPage = (href: string) =>
+  href === "/"
+    ? Astro.url.pathname === href
+    : Astro.url.pathname.startsWith(href);
 ---
 
 <header class="site-header">
@@ -12,17 +23,35 @@ import UiText from "./UiText.astro";
     data-zh={site.name}
     data-en={site.nameEn}
     aria-label={site.name}
-    ><span class="brand-name" data-ui-text data-zh="钱子晗" data-en="Zihan's"
-      >钱子晗</span
-    ><span class="brand-suffix" data-ui-text data-zh="的blog" data-en=" blog"
-      >的blog</span
-    ><span class="brand-separator">·</span></a
   >
-  <nav aria-label="Primary navigation">
-    <a href="/"><UiText zh="首页" en="Home" /></a>
-    <a href="/posts/"><UiText zh="文章" en="Articles" /></a>
-    <a href="/search/"><UiText zh="搜索" en="Search" /></a>
-    <a href="/about/"><UiText zh="关于我" en="About" /></a>
+    <span class="brand-name" data-ui-text data-zh="钱子晗" data-en="Zihan's">
+      钱子晗
+    </span><span
+      class="brand-suffix"
+      data-ui-text
+      data-zh="的blog"
+      data-en=" blog"
+    >
+      的blog
+    </span><span class="brand-separator">·</span>
+  </a>
+  <nav
+    class="desktop-nav"
+    data-ui-aria-label
+    data-zh="主导航"
+    data-en="Primary navigation"
+    aria-label="主导航"
+  >
+    {
+      navigation.map((item) => (
+        <a
+          href={item.href}
+          aria-current={isCurrentPage(item.href) ? "page" : undefined}
+        >
+          <UiText zh={item.zh} en={item.en} />
+        </a>
+      ))
+    }
   </nav>
   <div class="header-actions">
     <details class="language-menu" data-language-menu>
@@ -33,8 +62,10 @@ import UiText from "./UiText.astro";
         data-en="Choose interface language"
         aria-label="选择界面语言"
         aria-controls="language-options"
-        aria-expanded="false"><span data-language-current>中文</span></summary
+        aria-expanded="false"
       >
+        <span data-language-current>中文</span>
+      </summary>
       <div
         id="language-options"
         class="language-options"
@@ -54,3 +85,22 @@ import UiText from "./UiText.astro";
     <ThemeToggle />
   </div>
 </header>
+
+<nav
+  class="mobile-nav"
+  data-ui-aria-label
+  data-zh="主导航"
+  data-en="Primary navigation"
+  aria-label="主导航"
+>
+  {
+    navigation.map((item) => (
+      <a
+        href={item.href}
+        aria-current={isCurrentPage(item.href) ? "page" : undefined}
+      >
+        <UiText zh={item.zh} en={item.en} />
+      </a>
+    ))
+  }
+</nav>

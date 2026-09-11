@@ -72,14 +72,19 @@ const pageTitle = localizedTitle
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">
+      <span data-ui-text data-zh="跳至主要内容" data-en="Skip to content">
+        跳至主要内容
+      </span>
+    </a>
     <div class="page-shell">
-      <Header />
-      <main><slot /></main>
+      <div class="site-chrome"><Header /></div>
+      <main id="main-content"><slot /></main>
       <footer class="site-footer">
         <span>© {new Date().getFullYear()} {site.name}</span>
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer"
-          >京ICP备2026048723号</a
-        ><a href="/rss.xml">RSS</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+          京ICP备2026048723号
+        </a><a href="/rss.xml">RSS</a>
       </footer>
     </div>
     <script>
@@ -144,6 +149,9 @@ const pageTitle = localizedTitle
             String(option.dataset.languageOption === language),
           );
         });
+        document.dispatchEvent(
+          new CustomEvent("ui-language-change", { detail: { language } }),
+        );
       }
       applyLanguage(document.documentElement.dataset.uiLanguage || "zh");
 
@@ -185,16 +193,23 @@ const pageTitle = localizedTitle
         event.preventDefault();
         closeLanguageMenu(true);
       });
-      document
-        .querySelector("[data-theme-toggle]")
-        ?.addEventListener("click", () => {
-          const next =
-            document.documentElement.dataset.theme === "dark"
-              ? "light"
-              : "dark";
-          document.documentElement.dataset.theme = next;
-          localStorage.setItem("theme", next);
-        });
+      const themeToggle = document.querySelector<HTMLButtonElement>(
+        "[data-theme-toggle]",
+      );
+
+      function applyTheme(candidate: string) {
+        const theme = candidate === "dark" ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        themeToggle?.setAttribute("aria-pressed", String(theme === "dark"));
+      }
+
+      applyTheme(document.documentElement.dataset.theme || "light");
+      themeToggle?.addEventListener("click", () => {
+        const next =
+          document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        applyTheme(next);
+        localStorage.setItem("theme", next);
+      });
       languageOptions.forEach((option, index) => {
         option.addEventListener("click", () => {
           const language = option.dataset.languageOption;
