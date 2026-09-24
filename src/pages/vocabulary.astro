@@ -1,0 +1,796 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import UiText from "../components/UiText.astro";
+---
+
+<BaseLayout
+  title={{ zh: "背单词", en: "Vocabulary" }}
+  description={{
+    zh: "创建个人单词卡片，按复习计划学习并同步学习进度。",
+    en: "Create personal word cards, review them on a schedule, and sync your progress.",
+  }}
+>
+  <section class="page-intro vocabulary-intro">
+    <p class="kicker"><UiText zh="每日练习" en="DAILY PRACTICE" /></p>
+    <h1><UiText zh="把新词，变成熟悉。" en="Make new words familiar." /></h1>
+    <p class="vocabulary-lead">
+      <UiText
+        zh="添加自己的词条，系统会为你安排复习节奏。"
+        en="Add your own words and let your review schedule take shape."
+      />
+    </p>
+  </section>
+
+  <section class="vocabulary-panel" aria-labelledby="vocabulary-title">
+    <div class="vocabulary-config-warning" data-config-warning hidden>
+      <strong
+        data-ui-text
+        data-zh="还差一步配置"
+        data-en="One setup step remains">还差一步配置</strong
+      >
+      <p
+        data-ui-text
+        data-zh="背词服务尚未连接。请按 README 中的 Supabase 设置说明配置站点环境变量和数据库。"
+        data-en="The vocabulary service is not connected yet. Follow the Supabase setup steps in README to configure the site environment and database."
+      >
+        背词服务尚未连接。请按 README 中的 Supabase
+        设置说明配置站点环境变量和数据库。
+      </p>
+    </div>
+
+    <div class="vocabulary-login" data-login-panel hidden>
+      <div>
+        <p class="eyebrow"><UiText zh="个人词库" en="YOUR WORD LIST" /></p>
+        <h2 id="vocabulary-title">
+          <UiText zh="登录后开始复习" en="Sign in to start reviewing" />
+        </h2>
+        <p class="vocabulary-muted">
+          <UiText
+            zh="登录链接只会发送给已获授权的账号。"
+            en="A sign-in link is sent only to an authorized account."
+          />
+        </p>
+      </div>
+      <form class="vocabulary-login-form" data-login-form>
+        <label for="login-email"
+          ><UiText zh="邮箱地址" en="Email address" /></label
+        >
+        <input
+          id="login-email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          data-ui-placeholder
+          data-zh="输入你的登录邮箱"
+          data-en="Enter your sign-in email"
+          placeholder="输入你的登录邮箱"
+        />
+        <button
+          class="vocabulary-primary"
+          type="submit"
+          data-ui-text
+          data-zh="发送登录链接"
+          data-en="Send sign-in link">发送登录链接</button
+        >
+      </form>
+    </div>
+
+    <div class="vocabulary-app" data-app-panel hidden>
+      <div class="vocabulary-toolbar">
+        <div>
+          <p class="eyebrow"><UiText zh="个人词库" en="YOUR WORD LIST" /></p>
+          <p class="vocabulary-user" data-user-email></p>
+        </div>
+        <button
+          class="vocabulary-quiet"
+          type="button"
+          data-sign-out
+          data-ui-text
+          data-zh="退出登录"
+          data-en="Sign out">退出登录</button
+        >
+      </div>
+
+      <div
+        class="vocabulary-tabs"
+        role="tablist"
+        data-ui-aria-label
+        data-zh="背词功能"
+        data-en="Vocabulary tools"
+        aria-label="背词功能"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected="true"
+          data-tab="study"
+          data-ui-text
+          data-zh="今日复习"
+          data-en="Today's review">今日复习</button
+        >
+        <button
+          type="button"
+          role="tab"
+          aria-selected="false"
+          data-tab="manage"
+          data-ui-text
+          data-zh="管理词条"
+          data-en="Manage words">管理词条</button
+        >
+      </div>
+
+      <section class="vocabulary-view" data-view="study" role="tabpanel">
+        <div class="vocabulary-stats">
+          <div>
+            <strong data-due-count>0</strong><span
+              data-ui-text
+              data-zh="待复习"
+              data-en="Due">待复习</span>
+          </div>
+          <div>
+            <strong data-new-count>0</strong><span
+              data-ui-text
+              data-zh="今日新词剩余"
+              data-en="New words left today">今日新词剩余</span>
+          </div>
+          <div>
+            <strong data-total-count>0</strong><span
+              data-ui-text
+              data-zh="词库总数"
+              data-en="Total words">词库总数</span>
+          </div>
+        </div>
+
+        <div class="vocabulary-study" data-study-card hidden>
+          <p class="vocabulary-card-label" data-card-label></p>
+          <button
+            class="vocabulary-flashcard"
+            type="button"
+            data-flashcard
+            aria-expanded="false"
+          >
+            <span class="vocabulary-card-word" data-card-word></span>
+            <span class="vocabulary-card-hint" data-card-hint></span>
+            <span class="vocabulary-card-answer" data-card-answer hidden>
+              <span data-card-meaning></span>
+              <span class="vocabulary-card-example" data-card-example></span>
+            </span>
+          </button>
+          <div class="vocabulary-rating" data-ratings hidden>
+            <p
+              data-ui-text
+              data-zh="你记得这个词吗？"
+              data-en="How well did you remember it?"
+            >
+              你记得这个词吗？
+            </p>
+            <div>
+              <button type="button" data-rating="again"
+                ><span data-ui-text data-zh="忘记" data-en="Again">忘记</span
+                ><small data-ui-text data-zh="10 分钟" data-en="10 min"
+                  >10 分钟</small
+                ></button
+              >
+              <button type="button" data-rating="hard"
+                ><span data-ui-text data-zh="困难" data-en="Hard">困难</span
+                ><small data-ui-text data-zh="1 天" data-en="1 day">1 天</small
+                ></button
+              >
+              <button type="button" data-rating="good"
+                ><span data-ui-text data-zh="认识" data-en="Good">认识</span
+                ><small data-rating-hint="good"></small></button
+              >
+              <button type="button" data-rating="easy"
+                ><span data-ui-text data-zh="简单" data-en="Easy">简单</span
+                ><small data-rating-hint="easy"></small></button
+              >
+            </div>
+          </div>
+        </div>
+        <div class="vocabulary-empty" data-study-empty hidden>
+          <strong data-empty-title></strong>
+          <p data-empty-copy></p>
+          <button
+            class="vocabulary-primary"
+            type="button"
+            data-empty-manage
+            data-ui-text
+            data-zh="添加单词"
+            data-en="Add a word">添加单词</button
+          >
+        </div>
+      </section>
+
+      <section
+        class="vocabulary-view"
+        data-view="manage"
+        role="tabpanel"
+        hidden
+      >
+        <div class="vocabulary-manager">
+          <form class="vocabulary-word-form" data-word-form>
+            <div class="vocabulary-form-heading">
+              <h2
+                data-form-title
+                data-ui-text
+                data-zh="添加单词"
+                data-en="Add a word"
+              >
+                添加单词
+              </h2>
+              <button
+                class="vocabulary-quiet"
+                type="button"
+                data-cancel-edit
+                hidden
+                data-ui-text
+                data-zh="取消编辑"
+                data-en="Cancel edit">取消编辑</button
+              >
+            </div>
+            <label for="word-input"
+              ><UiText zh="英文单词" en="English word" /></label
+            >
+            <input
+              id="word-input"
+              name="word"
+              maxlength="120"
+              required
+              autocomplete="off"
+            />
+            <label for="meaning-input"
+              ><UiText zh="中文释义" en="Chinese meaning" /></label
+            >
+            <textarea
+              id="meaning-input"
+              name="meaning"
+              rows="2"
+              maxlength="500"
+              required></textarea>
+            <label for="example-input"
+              ><UiText zh="例句（选填）" en="Example (optional)" /></label
+            >
+            <textarea
+              id="example-input"
+              name="example"
+              rows="2"
+              maxlength="1000"></textarea>
+            <button
+              class="vocabulary-primary"
+              type="submit"
+              data-save-word
+              data-ui-text
+              data-zh="保存词条"
+              data-en="Save word">保存词条</button
+            >
+          </form>
+          <div class="vocabulary-word-list-wrap">
+            <div class="vocabulary-list-heading">
+              <h2><UiText zh="我的词条" en="My words" /></h2>
+              <span data-list-count>0</span>
+            </div>
+            <div class="vocabulary-word-list" data-word-list></div>
+            <p
+              class="vocabulary-list-empty"
+              data-list-empty
+              data-ui-text
+              data-zh="还没有单词，先添加一个吧。"
+              data-en="No words yet. Add your first one."
+            >
+              还没有单词，先添加一个吧。
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="vocabulary-status" data-status role="status" aria-live="polite">
+    </p>
+  </section>
+</BaseLayout>
+
+<script>
+  import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+  type Rating = "again" | "hard" | "good" | "easy";
+  type WordCard = {
+    id: string;
+    user_id: string;
+    word: string;
+    meaning: string;
+    example: string | null;
+    created_at: string;
+    updated_at: string;
+    first_studied_at: string | null;
+    introduced_on: string | null;
+    due_at: string | null;
+    interval_days: number;
+    review_count: number;
+    last_rating: Rating | null;
+  };
+
+  const allowedEmail = "qianzihanduo@gmail.com";
+  const loginPanel = document.querySelector<HTMLElement>("[data-login-panel]");
+  const appPanel = document.querySelector<HTMLElement>("[data-app-panel]");
+  const warning = document.querySelector<HTMLElement>("[data-config-warning]");
+  const status = document.querySelector<HTMLElement>("[data-status]");
+  const loginForm =
+    document.querySelector<HTMLFormElement>("[data-login-form]");
+  const wordForm = document.querySelector<HTMLFormElement>("[data-word-form]");
+  const list = document.querySelector<HTMLElement>("[data-word-list]");
+  const formTitle = document.querySelector<HTMLElement>("[data-form-title]");
+  const saveButton =
+    document.querySelector<HTMLButtonElement>("[data-save-word]");
+  const cancelEdit =
+    document.querySelector<HTMLButtonElement>("[data-cancel-edit]");
+
+  let supabase: SupabaseClient | null = null;
+  let cards: WordCard[] = [];
+  let activeCard: WordCard | null = null;
+  let editingId: string | null = null;
+  let busy = false;
+  let dueRefreshTimer: number | undefined;
+
+  function scheduleDueRefresh() {
+    if (dueRefreshTimer !== undefined) window.clearTimeout(dueRefreshTimer);
+    const nextDue = cards
+      .filter(
+        (card) =>
+          card.first_studied_at &&
+          card.due_at &&
+          Date.parse(card.due_at) > Date.now(),
+      )
+      .sort((a, b) => Date.parse(a.due_at!) - Date.parse(b.due_at!))[0];
+    if (!nextDue?.due_at) return;
+    const delay = Math.max(0, Date.parse(nextDue.due_at) - Date.now() + 500);
+    dueRefreshTimer = window.setTimeout(() => {
+      void loadCards().catch(() =>
+        say(
+          "加载词库失败，请检查网络连接。",
+          "Couldn't refresh your words. Check your connection.",
+        ),
+      );
+    }, delay);
+  }
+
+  function language() {
+    return document.documentElement.dataset.uiLanguage === "zh" ? "zh" : "en";
+  }
+
+  function say(zh: string, en: string) {
+    if (status) status.textContent = language() === "zh" ? zh : en;
+  }
+
+  function text(zh: string, en: string) {
+    return language() === "zh" ? zh : en;
+  }
+
+  function setBusy(value: boolean) {
+    busy = value;
+    document
+      .querySelectorAll<HTMLButtonElement>(
+        "[data-word-form] button, [data-rating], [data-login-form] button",
+      )
+      .forEach((button) => {
+        button.disabled = value;
+      });
+  }
+
+  function localDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function reviewInterval(card: WordCard, rating: Rating) {
+    if (rating === "again") return 0;
+    if (rating === "hard") return 1;
+    if (rating === "good")
+      return card.interval_days <= 0
+        ? 1
+        : Math.max(card.interval_days + 1, Math.round(card.interval_days * 2));
+    return card.interval_days <= 0
+      ? 3
+      : Math.max(card.interval_days + 1, Math.round(card.interval_days * 2.5));
+  }
+
+  function nextDue(card: WordCard, rating: Rating, now: Date) {
+    if (rating === "again") return new Date(now.getTime() + 10 * 60 * 1000);
+    if (rating === "hard") return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const days = reviewInterval(card, rating);
+    return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  function dueCards() {
+    const now = Date.now();
+    return cards
+      .filter(
+        (card) =>
+          card.first_studied_at &&
+          card.due_at &&
+          Date.parse(card.due_at) <= now,
+      )
+      .sort((a, b) => Date.parse(a.due_at!) - Date.parse(b.due_at!));
+  }
+
+  function studiedToday() {
+    const today = localDateKey();
+    return cards.filter((card) => card.introduced_on === today).length;
+  }
+
+  function newCards() {
+    return cards
+      .filter((card) => !card.first_studied_at)
+      .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+  }
+
+  function setTab(tab: "study" | "manage") {
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-tab]")
+      .forEach((button) => {
+        const selected = button.dataset.tab === tab;
+        button.setAttribute("aria-selected", String(selected));
+      });
+    document.querySelectorAll<HTMLElement>("[data-view]").forEach((view) => {
+      view.hidden = view.dataset.view !== tab;
+    });
+  }
+
+  function renderStudy() {
+    const due = dueCards();
+    const fresh = newCards();
+    const allowance = Math.max(0, 30 - studiedToday());
+    const next = due[0] ?? fresh[0];
+    const learnable = Boolean(due[0] || (fresh[0] && allowance > 0));
+
+    document.querySelector<HTMLElement>("[data-due-count]")!.textContent =
+      String(due.length);
+    document.querySelector<HTMLElement>("[data-new-count]")!.textContent =
+      String(Math.min(allowance, fresh.length));
+    document.querySelector<HTMLElement>("[data-total-count]")!.textContent =
+      String(cards.length);
+
+    const studyCard = document.querySelector<HTMLElement>("[data-study-card]")!;
+    const empty = document.querySelector<HTMLElement>("[data-study-empty]")!;
+    studyCard.hidden = !learnable;
+    empty.hidden = learnable;
+    if (!learnable) {
+      const title = document.querySelector<HTMLElement>("[data-empty-title]")!;
+      const copy = document.querySelector<HTMLElement>("[data-empty-copy]")!;
+      if (cards.length === 0) {
+        title.textContent = text("词库还是空的", "Your word list is empty");
+        copy.textContent = text(
+          "添加几个词条，就可以开始今天的练习。",
+          "Add a few words to begin today's practice.",
+        );
+      } else if (due.length === 0 && fresh.length > 0) {
+        title.textContent = text(
+          "今天的新词学完了",
+          "Today's new words are done",
+        );
+        copy.textContent = text(
+          "明天会有新的学习额度。到期复习词仍会随时出现。",
+          "Your new-word allowance refreshes tomorrow. Due reviews will appear as they come up.",
+        );
+      } else {
+        title.textContent = text("今天的复习完成了", "You're all caught up");
+        copy.textContent = text(
+          "有新词到期时，它们会出现在这里。",
+          "Words will appear here when they are due.",
+        );
+      }
+      return;
+    }
+
+    activeCard = due[0] ?? next!;
+    const isNew = !activeCard.first_studied_at;
+    document.querySelector<HTMLElement>("[data-card-label]")!.textContent =
+      isNew
+        ? text("今日新词", "NEW WORD")
+        : text(
+            `到期复习 · ${due.length} 个待复习`,
+            `DUE REVIEW · ${due.length} due`,
+          );
+    document.querySelector<HTMLElement>("[data-card-word]")!.textContent =
+      activeCard.word;
+    document.querySelector<HTMLElement>("[data-card-hint]")!.textContent = text(
+      "点击卡片查看释义",
+      "Tap the card to reveal the meaning",
+    );
+    document.querySelector<HTMLElement>("[data-card-meaning]")!.textContent =
+      activeCard.meaning;
+    document.querySelector<HTMLElement>("[data-card-example]")!.textContent =
+      activeCard.example ?? "";
+    const card = document.querySelector<HTMLButtonElement>("[data-flashcard]")!;
+    card.setAttribute("aria-expanded", "false");
+    document.querySelector<HTMLElement>("[data-card-answer]")!.hidden = true;
+    document.querySelector<HTMLElement>("[data-card-hint]")!.hidden = false;
+    document.querySelector<HTMLElement>("[data-ratings]")!.hidden = true;
+    document
+      .querySelectorAll<HTMLElement>("[data-rating-hint]")
+      .forEach((hint) => {
+        hint.textContent = text(
+          `${reviewInterval(activeCard!, hint.dataset.ratingHint as Rating)} 天后`,
+          `in ${reviewInterval(activeCard!, hint.dataset.ratingHint as Rating)} days`,
+        );
+      });
+  }
+
+  function renderList() {
+    if (!list) return;
+    list.replaceChildren();
+    const listEmpty = document.querySelector<HTMLElement>("[data-list-empty]")!;
+    listEmpty.hidden = cards.length > 0;
+    document.querySelector<HTMLElement>("[data-list-count]")!.textContent =
+      String(cards.length);
+
+    for (const card of [...cards].sort((a, b) =>
+      a.word.localeCompare(b.word),
+    )) {
+      const row = document.createElement("article");
+      row.className = "vocabulary-word-row";
+      const details = document.createElement("div");
+      const word = document.createElement("strong");
+      word.textContent = card.word;
+      const meaning = document.createElement("span");
+      meaning.textContent = card.meaning;
+      details.append(word, meaning);
+      if (card.example) {
+        const example = document.createElement("small");
+        example.textContent = card.example;
+        details.append(example);
+      }
+      const actions = document.createElement("div");
+      actions.className = "vocabulary-row-actions";
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "vocabulary-quiet";
+      edit.textContent = text("编辑", "Edit");
+      edit.addEventListener("click", () => beginEdit(card));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "vocabulary-quiet vocabulary-delete";
+      remove.textContent = text("删除", "Delete");
+      remove.addEventListener("click", () => deleteCard(card));
+      actions.append(edit, remove);
+      row.append(details, actions);
+      list.append(row);
+    }
+  }
+
+  function beginEdit(card: WordCard) {
+    if (!wordForm || !formTitle || !saveButton || !cancelEdit) return;
+    editingId = card.id;
+    wordForm.querySelector<HTMLInputElement>("[name=word]")!.value = card.word;
+    wordForm.querySelector<HTMLTextAreaElement>("[name=meaning]")!.value =
+      card.meaning;
+    wordForm.querySelector<HTMLTextAreaElement>("[name=example]")!.value =
+      card.example ?? "";
+    formTitle.textContent = text("编辑单词", "Edit word");
+    saveButton.textContent = text("保存修改", "Save changes");
+    cancelEdit.hidden = false;
+    wordForm.querySelector<HTMLInputElement>("[name=word]")!.focus();
+  }
+
+  function resetForm() {
+    wordForm?.reset();
+    editingId = null;
+    if (formTitle) formTitle.textContent = text("添加单词", "Add a word");
+    if (saveButton) saveButton.textContent = text("保存词条", "Save word");
+    if (cancelEdit) cancelEdit.hidden = true;
+  }
+
+  async function loadCards() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("vocabulary_cards")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    cards = (data ?? []) as WordCard[];
+    renderStudy();
+    renderList();
+    scheduleDueRefresh();
+  }
+
+  async function deleteCard(card: WordCard) {
+    if (!supabase || busy) return;
+    const confirmed = window.confirm(
+      text(`确定删除“${card.word}”吗？`, `Delete “${card.word}”?`),
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from("vocabulary_cards")
+      .delete()
+      .eq("id", card.id);
+    setBusy(false);
+    if (error)
+      return say(
+        "删除失败，请稍后重试。",
+        "Couldn't delete the word. Try again.",
+      );
+    if (activeCard?.id === card.id) activeCard = null;
+    await loadCards();
+    say("词条已删除。", "Word deleted.");
+  }
+
+  async function submitRating(rating: Rating) {
+    if (!supabase || !activeCard || busy) return;
+    setBusy(true);
+    const now = new Date();
+    const dueAt = nextDue(activeCard, rating, now);
+    const patch: Partial<WordCard> = {
+      first_studied_at: activeCard.first_studied_at ?? now.toISOString(),
+      introduced_on: activeCard.introduced_on ?? localDateKey(now),
+      last_rating: rating,
+      due_at: dueAt.toISOString(),
+      interval_days: reviewInterval(activeCard, rating),
+      review_count: activeCard.review_count + 1,
+      updated_at: now.toISOString(),
+    };
+    const { error } = await supabase
+      .from("vocabulary_cards")
+      .update(patch)
+      .eq("id", activeCard.id);
+    setBusy(false);
+    if (error)
+      return say(
+        "复习进度保存失败，请重试。",
+        "Couldn't save your review. Please try again.",
+      );
+    await loadCards();
+    say("复习进度已同步。", "Review progress synced.");
+  }
+
+  document
+    .querySelector<HTMLButtonElement>("[data-flashcard]")
+    ?.addEventListener("click", (event) => {
+      const card = event.currentTarget as HTMLButtonElement;
+      card.setAttribute("aria-expanded", "true");
+      document.querySelector<HTMLElement>("[data-card-hint]")!.hidden = true;
+      document.querySelector<HTMLElement>("[data-card-answer]")!.hidden = false;
+      document.querySelector<HTMLElement>("[data-ratings]")!.hidden = false;
+    });
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-rating]")
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        () => void submitRating(button.dataset.rating as Rating),
+      );
+    });
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-tab]")
+    .forEach((button) => {
+      button.addEventListener("click", () =>
+        setTab(button.dataset.tab as "study" | "manage"),
+      );
+    });
+
+  document
+    .querySelector<HTMLButtonElement>("[data-empty-manage]")
+    ?.addEventListener("click", () => setTab("manage"));
+  cancelEdit?.addEventListener("click", resetForm);
+
+  wordForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!supabase || busy) return;
+    const values = new FormData(wordForm);
+    const word = String(values.get("word") ?? "").trim();
+    const meaning = String(values.get("meaning") ?? "").trim();
+    const example = String(values.get("example") ?? "").trim() || null;
+    if (!word || !meaning) return;
+    setBusy(true);
+    const wasEditing = Boolean(editingId);
+    const request = editingId
+      ? supabase
+          .from("vocabulary_cards")
+          .update({
+            word,
+            meaning,
+            example,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingId)
+      : supabase.from("vocabulary_cards").insert({ word, meaning, example });
+    const { error } = await request;
+    setBusy(false);
+    if (error)
+      return say(
+        "保存失败，请稍后重试。",
+        "Couldn't save the word. Try again.",
+      );
+    resetForm();
+    await loadCards();
+    say(
+      wasEditing ? "词条已更新。" : "词条已添加。",
+      wasEditing ? "Word updated." : "Word added.",
+    );
+  });
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!supabase || busy) return;
+    const email = String(new FormData(loginForm).get("email") ?? "")
+      .trim()
+      .toLowerCase();
+    if (email !== allowedEmail) {
+      say(
+        "这个邮箱没有背词账号权限。",
+        "This email is not authorized for vocabulary access.",
+      );
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/vocabulary/`,
+      },
+    });
+    setBusy(false);
+    if (error)
+      return say(
+        "发送失败，请检查邮件服务配置后重试。",
+        "Couldn't send the link. Check email delivery settings and try again.",
+      );
+    say("登录链接已发送，请查收邮箱。", "Sign-in link sent. Check your email.");
+  });
+
+  document
+    .querySelector<HTMLButtonElement>("[data-sign-out]")
+    ?.addEventListener("click", async () => {
+      if (!supabase) return;
+      await supabase.auth.signOut();
+    });
+
+  document.addEventListener("ui-language-change", () => {
+    renderStudy();
+    renderList();
+    if (editingId) {
+      const card = cards.find((item) => item.id === editingId);
+      if (card) beginEdit(card);
+    }
+  });
+
+  const url = import.meta.env.PUBLIC_SUPABASE_URL;
+  const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    if (warning) warning.hidden = false;
+  } else {
+    supabase = createClient(url, anonKey);
+    const showSession = async (email: string | undefined) => {
+      const authorized = email?.toLowerCase() === allowedEmail;
+      if (loginPanel) loginPanel.hidden = Boolean(authorized);
+      if (appPanel) appPanel.hidden = !authorized;
+      if (!authorized) {
+        if (dueRefreshTimer !== undefined) window.clearTimeout(dueRefreshTimer);
+        if (email) await supabase?.auth.signOut();
+        cards = [];
+        return;
+      }
+      document.querySelector<HTMLElement>("[data-user-email]")!.textContent =
+        email!;
+      try {
+        await loadCards();
+      } catch {
+        say(
+          "加载词库失败，请检查 Supabase 数据库配置。",
+          "Couldn't load your words. Check the Supabase database setup.",
+        );
+      }
+    };
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => showSession(data.session?.user.email));
+    supabase.auth.onAuthStateChange((_event, session) => {
+      void showSession(session?.user.email);
+    });
+  }
+</script>
