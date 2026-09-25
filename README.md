@@ -18,7 +18,7 @@ npm run dev
 1. 创建 Supabase 项目，在 Authentication 的用户注册设置中关闭公开注册，并邀请 `qianzihanduo@gmail.com`。
 2. 在 SQL Editor 中执行 `supabase/migrations/20260924000000_vocabulary_cards.sql`。迁移会创建个人词条表并启用用户和邮箱双重隔离策略。
 3. 配置邮件 SMTP，并将生产站点的 URL 添加为 Auth Site URL 和允许的重定向地址；本地开发时也添加 `http://localhost:4321/vocabulary/`。
-4. 将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。配置同名 `PUBLIC_SUPABASE_URL`、`PUBLIC_SUPABASE_ANON_KEY` 构建环境变量后重新构建并部署静态站点。只使用浏览器公开 key；不要把 `service_role` key 放入网站或仓库。
+4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。若使用 GitHub Actions 发布，在仓库 Settings > Secrets and variables > Actions 中添加 `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 两个 Repository secrets；工作流会把它们传给构建步骤。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
 
 ## 腾讯云发布（服务器无需 Git）
 
