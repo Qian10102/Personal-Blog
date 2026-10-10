@@ -1,17 +1,17 @@
 export const site = {
   name: "钱子晗的Blog",
   nameEn: "Zihan's Blog",
-  description: "记录工程学习、交通物流与项目思考。",
-  descriptionEn: "Notes on engineering, transport, logistics and projects.",
+  description: "记录工程学习、集成电路与项目思考。",
+  descriptionEn: "Notes on engineering, IC, logistics and projects.",
   url: "https://example.com",
   author: "钱子晗",
   authorEN: "Zihan QIAN",
-  bio: "北京航空航天大学交通运输与物流专业学生，关注工程实践、交通与物流。",
+  bio: "北京航空航天大学交通微电子科学与工程专业学生，关注关心集成电路设计、生产和制造",
   bioEn: [
-    "Transport and Logistics student at Beihang University,",
-    "interested in engineering practice, transport and logistics.",
+    "Microelectronics Science and Engineering Student at Beihang University,",
+    "interested in the design, production and manufacturing of IC.",
   ].join(" "),
-  email: "zihan.qian.insa@gmail.com",
+  email: "qianzihan@buaa.edu.cn",
   social: {
     github: "https://github.com/your-handle",
     x: "https://x.com/your-handle",
