@@ -1,7 +1,7 @@
 ---
 title: "幽鉴潜盾：从火情感知到设备预测性维护"
 description: "完整梳理古建筑火灾预警系统的硬件组成、双路数据流程，以及 Isolation Forest、Prophet 和 XGBoost 如何协助设备自检。"
-pubDate: 2025-08-10
+pubDate: 2026-10-08
 category: "项目"
 tags: ["冯如杯", "古建筑保护", "红外传感器", "故障检测"]
 language: "zh"
