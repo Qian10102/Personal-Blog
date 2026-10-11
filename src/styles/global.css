@@ -1013,6 +1013,33 @@ html[data-theme="dark"] .vocabulary-delete {
 .prose p {
   margin: 0 0 1.35rem;
 }
+.prose .article-figure {
+  margin: 2rem 0 2.2rem;
+  padding: 0.7rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+}
+.prose .article-figure img {
+  display: block;
+  width: 100%;
+  max-height: min(72vh, 48rem);
+  margin: 0;
+  border-radius: 0.85rem;
+  background: var(--surface-raised);
+  object-fit: contain;
+  object-position: center;
+}
+.prose .article-figure figcaption {
+  margin: 0.68rem 0.3rem 0.1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
 .prose table {
   width: 100%;
   margin: 1.5rem 0 1.8rem;
@@ -1447,6 +1474,19 @@ button:active,
   .prose th,
   .prose td {
     white-space: nowrap;
+  }
+  .prose .article-figure {
+    margin: 1.5rem 0;
+    padding: 0.45rem;
+    border-radius: 1rem;
+  }
+  .prose .article-figure img {
+    max-height: min(62vh, 34rem);
+    border-radius: 0.7rem;
+  }
+  .prose .article-figure figcaption {
+    margin: 0.55rem 0.2rem 0.1rem;
+    font-size: 0.76rem;
   }
   .article-header h1 {
     font-size: clamp(2.7rem, 12vw, 3.7rem);
