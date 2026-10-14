@@ -13,6 +13,8 @@ draft: false
 
 下面按设备组成、数据流和算法分工，说明这套方案如何工作。
 
+**English version:** [Yinjian Qiedun: From Fire Detection to Predictive Maintenance](/posts/hidden-light-eye-sensor-health-en/)
+
 ## 一、系统的组成部分
 
 ### 1. 现场检测器：感知温度并回传数据
