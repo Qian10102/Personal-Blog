@@ -1,0 +1,232 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import UiText from "../../components/UiText.astro";
+import { tenses } from "../../lib/conjugation";
+---
+
+<BaseLayout
+  title={{ zh: "法语动词变位", en: "French conjugation" }}
+  description={{
+    zh: "100 个法语动词，六种常用时态。每次十题，记录你的进步。",
+    en: "Practice 100 French verbs across six tenses, ten questions at a time.",
+  }}
+>
+  <section class="page-intro vocabulary-intro conjugation-intro">
+    <a class="conjugation-back" href="/vocabulary/"
+      ><UiText zh="← 返回背单词" en="← Back to vocabulary" /></a
+    >
+    <p class="kicker">
+      <UiText zh="法语 · 每日练习" en="FRENCH · DAILY PRACTICE" />
+    </p>
+    <h1><UiText zh="让变位，成为习惯。" en="Find your French rhythm." /></h1>
+    <p class="vocabulary-lead">
+      <UiText
+        zh="100 个常用动词，六种时态。每次十题，慢慢熟悉。"
+        en="100 common verbs. Six tenses. Ten questions to build your confidence."
+      />
+    </p>
+  </section>
+
+  <section
+    class="vocabulary-panel conjugation-panel"
+    aria-labelledby="conjugation-title"
+  >
+    <h2 id="conjugation-title" class="sr-only">
+      <UiText zh="法语动词变位练习" en="French conjugation practice" />
+    </h2>
+    <div class="vocabulary-config-warning" data-config-warning hidden>
+      <strong><UiText zh="还差一步配置" en="One setup step remains" /></strong>
+      <p>
+        <UiText
+          zh="练习服务尚未连接，请按 README 配置 Supabase 环境变量与数据库。"
+          en="Connect the practice service by following the Supabase setup in README."
+        />
+      </p>
+    </div>
+    <div class="vocabulary-login" data-login-panel hidden>
+      <div>
+        <p class="eyebrow"><UiText zh="个人练习" en="YOUR PRACTICE" /></p>
+        <h2><UiText zh="登录后开始变位练习" en="Sign in to practice" /></h2>
+        <p class="vocabulary-muted">
+          <UiText
+            zh="使用背单词的授权账号，练习进度会自动同步。"
+            en="Use your authorized vocabulary account to sync your progress."
+          />
+        </p>
+      </div>
+      <form class="vocabulary-login-form" data-login-form>
+        <label for="conjugation-email"
+          ><UiText zh="邮箱地址" en="Email address" /></label
+        >
+        <input
+          id="conjugation-email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+        />
+        <button type="submit" class="vocabulary-primary"
+          ><UiText zh="发送登录链接" en="Send sign-in link" /></button
+        >
+      </form>
+    </div>
+    <div data-app-panel hidden>
+      <div class="vocabulary-toolbar">
+        <div>
+          <p class="eyebrow"><UiText zh="个人练习" en="YOUR PRACTICE" /></p><p
+            class="vocabulary-user"
+            data-user-email
+          >
+          </p>
+        </div>
+        <button type="button" class="vocabulary-quiet" data-sign-out
+          ><UiText zh="退出登录" en="Sign out" /></button
+        >
+      </div>
+      <div class="conjugation-loading" data-load-panel>
+        <p data-load-message role="status"></p>
+        <button type="button" class="vocabulary-quiet" data-reload hidden
+          ><UiText zh="重新加载" en="Try again" /></button
+        >
+      </div>
+      <div data-practice-panel hidden>
+        <div class="vocabulary-stats conjugation-stats">
+          <div>
+            <strong data-total-attempts>0</strong><span
+              ><UiText zh="累计答题" en="Total answers" /></span
+            >
+          </div>
+          <div>
+            <strong data-total-accuracy>—</strong><span
+              ><UiText zh="正确率" en="Accuracy" /></span
+            >
+          </div>
+          <div>
+            <strong data-round-score>—</strong><span
+              ><UiText zh="本轮答对" en="Correct this round" /></span
+            >
+          </div>
+        </div>
+        <form class="conjugation-setup" data-setup>
+          <div>
+            <label for="tense-mode"
+              ><UiText zh="练习时态" en="Practice tense" /></label
+            >
+            <select id="tense-mode" name="mode">
+              <option
+                value="mixed"
+                data-ui-text
+                data-zh="混合练习 · 六种时态"
+                data-en="Mixed · all six tenses">混合练习 · 六种时态</option
+              >
+              {
+                tenses.map((tense) => (
+                  <option
+                    value={tense.id}
+                    data-ui-text
+                    data-zh={`${tense.zh} · ${tense.fr}`}
+                    data-en={`${tense.en} · ${tense.fr}`}
+                  >
+                    {tense.zh} · {tense.fr}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+          <button type="submit" class="vocabulary-primary"
+            ><UiText zh="开始 10 题练习" en="Start 10 questions" /></button
+          >
+        </form>
+        <p class="conjugation-instructions">
+          <UiText
+            zh="只输入变位形式，不含主语或 que；复合过去时包含助动词。大小写、空格和重音差异均不影响判定。"
+            en="Enter only the verb form, without the subject or que. Include the auxiliary for the compound past. Case, spaces and accents do not affect grading."
+          />
+        </p>
+        <div class="conjugation-question" data-question hidden>
+          <div class="conjugation-question-meta">
+            <span data-question-count></span><span data-question-tense></span>
+          </div>
+          <progress
+            max="10"
+            value="0"
+            data-round-progress
+            data-ui-aria-label
+            data-zh="本轮进度"
+            data-en="Round progress"
+            aria-label="本轮进度"></progress>
+          <h2 lang="fr" data-verb></h2>
+          <p class="conjugation-person" lang="fr" data-person></p>
+          <p class="conjugation-agreement" data-agreement></p>
+          <form class="conjugation-answer-form" data-answer-form>
+            <label for="conjugation-answer"
+              ><UiText zh="你的答案" en="Your answer" /></label
+            >
+            <input
+              id="conjugation-answer"
+              name="answer"
+              lang="fr"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              maxlength="120"
+              required
+              aria-describedby="answer-feedback"
+            />
+            <button class="vocabulary-primary" type="submit" data-check
+              ><UiText zh="检查答案" en="Check answer" /></button
+            >
+          </form>
+          <div
+            class="conjugation-feedback"
+            id="answer-feedback"
+            data-feedback
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <strong data-verdict></strong>
+            <p>
+              <UiText zh="标准答案：" en="Standard answer: " /><span
+                lang="fr"
+                data-standard-answer></span>
+            </p>
+          </div>
+          <button
+            type="button"
+            class="vocabulary-primary conjugation-next"
+            data-next
+            hidden></button>
+        </div>
+        <div class="conjugation-summary" data-summary tabindex="-1" hidden>
+          <p class="eyebrow"><UiText zh="本轮完成" en="ROUND COMPLETE" /></p>
+          <h2 data-summary-score></h2>
+          <p>
+            <UiText
+              zh="进度已同步。选择时态，再练一轮。"
+              en="Progress synced. Choose a tense and try another round."
+            />
+          </p>
+        </div>
+        <div class="conjugation-sync" data-sync-panel hidden>
+          <p data-sync-message role="status"></p>
+          <button type="button" class="vocabulary-quiet" data-retry hidden
+            ><UiText zh="重试同步" en="Retry sync" /></button
+          >
+        </div>
+        <details class="conjugation-performance" open>
+          <summary><UiText zh="各时态表现" en="Performance by tense" /></summary
+          >
+          <p class="vocabulary-muted" data-last-practiced></p>
+          <div data-tense-stats></div>
+        </details>
+      </div>
+    </div>
+    <p class="vocabulary-status" data-status role="status" aria-live="polite">
+    </p>
+  </section>
+</BaseLayout>
+
+<script>
+  import "../../scripts/conjugation";
+</script>
