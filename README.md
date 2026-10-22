@@ -16,29 +16,41 @@ npm run dev
 背词页面使用 Supabase Auth 和 Postgres。页面只允许 `qianzihanduo@gmail.com` 登录，词条表通过 RLS 将数据限制到该邮箱对应的账号。服务未配置时，页面会显示配置提示。
 
 1. 创建 Supabase 项目，在 Authentication 的用户注册设置中关闭公开注册，并邀请 `qianzihanduo@gmail.com`。
-2. 依次应用 `supabase/migrations/20260924000000_vocabulary_cards.sql`、`supabase/migrations/20261020000000_conjugation_progress.sql` 与 `supabase/migrations/20261022162053_verb_meaning_progress.sql`。已有项目只需补充尚未应用的迁移。三份迁移分别配置词库、变位进度与含义进度；数据按用户和授权邮箱隔离。对已有云端项目应用新迁移前需确认本次数据库变更。
+2. 依次应用 `supabase/migrations/20260924000000_vocabulary_cards.sql`、`supabase/migrations/20261020000000_conjugation_progress.sql`、`supabase/migrations/20261022162053_verb_meaning_progress.sql` 与 `supabase/migrations/20261022163941_vocabulary_mistake_reviews.sql`。已有项目只需补充尚未应用的迁移。四份迁移分别配置词库、变位进度、含义进度与错题复习；数据按用户和授权邮箱隔离。应用迁移时应使用该项目已获授权的数据库管理方式。
 3. 配置邮件 SMTP，并将生产站点的 URL 添加为 Auth Site URL 和允许的重定向地址；两个页面的回调地址 `/vocabulary/` 和 `/vocabulary/conjugation/` 均需加入允许列表。本地开发时对应添加 `http://localhost:4321/vocabulary/` 和 `http://localhost:4321/vocabulary/conjugation/`。
 4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。若使用 GitHub Actions 发布，在仓库 Settings > Secrets and variables > Actions 中添加 `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 两个 Repository secrets；工作流会把它们传给构建步骤。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
 
 ## 法语动词变位
 
-全站“背单词”菜单点击后并列显示“单词记忆”（`/vocabulary/`）和“动词变位”（`/vocabulary/conjugation/`），桌面和手机均可使用；两个学习页顶部也提供同级切换。动词变位沿用词库登录会话。内置 100 个常用动词，覆盖直陈式现在时、复合过去时、未完成过去时、简单将来时、现在条件式、现在虚拟式。默认混合练习，也可选择单一时态；每轮抽取 10 道不重复的动词／时态／人称组合。
+全站“背单词”菜单点击后并列显示“单词记忆”（`/vocabulary/`）和“动词变位”（`/vocabulary/conjugation/`），桌面和手机均可使用；两个学习页顶部也提供同级切换。动词变位沿用词库登录会话。内置 100 个常用动词，覆盖直陈式现在时、复合过去时、未完成过去时、简单将来时、现在条件式、现在虚拟式。默认混合练习，也可选择单一时态；每轮默认 10 题，可选择 10、20、30、50 或自定义正整数；按不重复的动词／时态／人称组合计数，同一动词可出现不同组合。
 
 答案只填变位形式，不含主语或 `que`，复合过去时包含助动词。判定忽略大小写、所有空白和重音差异，反馈保留标准拼写。六个人称为 `je / tu / il / nous / vous / ils`；être 复合时态明确使用阳性（后三者用复数），移动动词取不及物用法，例如 `nous sommes sortis`。`payer` 和 `essayer` 同时接受 i/y 两种规范拼写。
 
 本地数据位于 `src/data/french-verbs.ts`，由人工整理的主要词形与屈折规则组成，不依赖运行时外部 API。未完成过去时通常取现在时 nous 词干，être 例外；虚拟式含双词干及不规则形式；-ger/-cer 保留拼写规则。词形交叉核对参考：[Verbiste 变位库说明](https://github.com/gauthier-th/conjugation-fr)。修改词表后运行 `npm test` 和 `npm run build`（测试需要 Node.js 22.6 或更新版本）。
 
-`conjugation_progress` 按账号、动词和时态保存答题总数、正确数和最近练习时间；页面显示累计、正确率和各时态表现。每题通过 `record_conjugation_answer` 同步，数据库原子递增；`conjugation_sync_receipts` 只保存账号和随机请求 ID 防止重试重复计数，不保存作答内容或逐题历史。两张表均启用 RLS；进度仅授权账号可读，写入只经检查身份的函数，回执不允许浏览器直接读写。
+`conjugation_progress` 按账号、动词和时态保存答题总数、正确数和最近练习时间；页面显示累计、正确率和各时态表现。新作答通过 `record_practice_answer` 将统计和错题一起原子保存；原 `record_conjugation_answer` 保留兼容旧版待同步请求。`conjugation_sync_receipts` 只保存账号和随机请求 ID 防止重试重复计数，不保存作答内容或逐题历史。两张表均启用 RLS；进度仅授权账号可读，写入只经检查身份的函数，回执不允许浏览器直接读写。
 
 保存失败时会阻止进入下一题并提供重试；当前标签页的待同步请求暂存在按账号隔离的 `sessionStorage` 中，刷新后可继续同步。若浏览器禁用存储，当前页面仍可重试，但刷新或关闭会丢失未确认的请求。刷新不会保留未完成的题目轮次，已同步的汇总会保留。数据库尚未迁移或网络不可用时显示加载失败，可重试，不显示为零进度。
 
 ## 动词含义练习
 
-在“动词变位”页选择独立的“动词含义”模式，每轮随机抽取 10 个不同动词。题目展示法语原形，填写中文释义后点击“查看答案”，再选择“答对了 / 答错了”；答出任一常用义即可。未自评不计入完成进度，输入文字不参与自动判分。完成本轮后可切换模式，中途刷新会结束当前轮次。
+在“动词变位”页选择独立的“动词含义”模式，每轮数量可选，默认随机抽取 10 个不同动词。题目展示法语原形，填写中文释义后点击“查看答案”，再选择“答对了 / 答错了”；答出任一常用义即可。未自评不计入完成进度，输入文字不参与自动判分。完成本轮后可切换模式，中途刷新会结束当前轮次。
 
 100 个动词的简明中文常用义保存在 `src/data/french-verb-meanings.ts`，编排与来源见 [释义说明](docs/reference/verb-meanings.md)。英文界面下作答与标准答案仍为中文。
 
-含义累计结果独立保存在 `verb_meaning_progress`，按账号和动词汇总；通过 `record_verb_meaning_answer` 原子更新，与变位的时态统计分开。公开 RPC 使用调用者权限，受保护的写入函数位于非公开 `private` schema，检查登录身份和授权邮箱；回执仅存账号和随机请求 ID，阻止重复计数，不保存中文输入文本。含义与变位使用不同的待同步存储键。含义进度尚未配置时可继续切换到原有变位模式。
+含义累计结果独立保存在 `verb_meaning_progress`，按账号和动词汇总；由 `record_practice_answer` 原子更新，与变位的时态统计分开；原 `record_verb_meaning_answer` 保留兼容旧版待同步请求。公开 RPC 使用调用者权限，受保护的写入函数位于非公开 `private` schema，检查登录身份和授权邮箱；回执仅存账号和随机请求 ID，阻止重复计数，不保存中文输入文本。含义与变位使用不同的待同步存储键。新客户端开始练习前会同时加载当前模式进度与错题，部署时需先补齐迁移。
+
+## 每轮学习与错题复习
+
+三种练习均支持 10／20／30／50 和自定义正整数，默认 10；浏览器按模式记住上次选择。候选不足时按实际数量练习并显示原因。单词记忆优先安排到期错题、其他到期复习和新词，每日最多引入 30 个新词；本轮固定队列不重复追加刚答错的词。刷新结束未完成轮次，保留已保存的结果与数量偏好。
+
+三种模式的错题分别保存在 `vocabulary_mistakes`。变位按动词、时态和人称区分，含义按动词区分，单词记忆按词条 ID 区分。含义依自评，单词记忆仅“忘记”算错。“只练错题”只选择当前模式和时态范围的到期记录，数量不足不补新题；错题本同时展示未到期、到期及已掌握记录。
+
+复习间隔为 **10 分钟 → 1 天 → 3 天 → 7 天 → 14 天 → 30 天**。错题到期答对进入下一阶段，从本次保存时间起算；提前答对保留原到期时间，答错重置为 10 分钟，最终阶段答对标记掌握并保留记录，再错则重新激活。单词错题中的“困难／认识／简单”均按此规则推进，普通非错题沿用原评分间隔；错题期间卡片与错题使用同一个到期时间。站内显示到期提醒，不发送邮件通知。
+
+`record_practice_answer` 的公开入口使用调用者权限，受检查的写入位于非公开 `private` schema。统计、错题状态、单词复习时间和去重回执在同一事务保存；`private.practice_sync_receipts` 仅保存账号、请求 ID 和题目标识。直接写错题表及未授权读写均被拒绝。旧词条和汇总保持原状，不从历史统计补造错题。三种模式均使用按账号隔离的待同步存储，保存失败可重试且不会重复计数。
+
+运行 `npm test`、`npm run build` 验证本地代码。`tests/sql/vocabulary-mistakes.sql` 是数据库集成验证脚本，需在已配置授权测试账号的数据库中由管理员执行；它测试阶段边界、原子计数、去重和权限，所有测试写入最终回滚。
 
 ## 腾讯云发布（服务器无需 Git）
 

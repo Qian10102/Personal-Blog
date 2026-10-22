@@ -13,6 +13,12 @@ import {
   type Progress,
   type Question,
 } from "../lib/conjugation.ts";
+import {
+  type Mistake,
+  dueMistakes,
+  prioritizeQuestions,
+} from "../lib/mistake-review";
+import { renderMistakeNotebook } from "../lib/mistake-notebook";
 import { sessionSizeControl } from "../lib/session-size-control";
 import { verbs } from "../data/french-verbs.ts";
 import { verbMeanings } from "../data/french-verb-meanings.ts";
@@ -36,6 +42,8 @@ type Pending = {
   kind: PracticeKind;
   tense?: Progress["tense"];
   correct: boolean;
+  version?: 2;
+  person?: number;
 };
 const allowedEmail = "qianzihanduo@gmail.com";
 const el = <T extends HTMLElement = HTMLElement>(selector: string) =>
@@ -52,6 +60,8 @@ let userId: string | null = null;
 let epoch = 0;
 let kind: PracticeKind = "conjugation";
 let rows: PracticeProgress[] = [];
+let mistakes: Mistake[] = [];
+let starting = false;
 let round: PracticeQuestion[] = [];
 let meaningAnswer: MeaningAnswer = { phase: "writing" };
 let composing = false;
@@ -79,7 +89,9 @@ function renderMode() {
         String(button.dataset.practiceKind === kind),
       );
       button.disabled =
-        Boolean(pending) || (!setup.hidden ? false : Boolean(round[index]));
+        starting ||
+        Boolean(pending) ||
+        (!setup.hidden ? false : Boolean(round[index]));
     });
   el("[data-tense-setup]").hidden = meaning;
   el("[data-attempts-label]").textContent = meaning
@@ -103,6 +115,13 @@ function renderMode() {
         "只输入变位形式，不含主语或 que；复合过去时包含助动词。大小写、空格和重音差异均不影响判定。完成本轮后可切换模式。",
         "Enter only the verb form, without the subject or que. Include the auxiliary for the compound past. Case, spaces and accents do not affect grading. Switch modes after the round.",
       );
+  renderMistakeNotebook(
+    el("[data-mistake-panel]"),
+    mistakes,
+    kind,
+    undefined,
+    el<HTMLSelectElement>("#tense-mode").value,
+  );
   input.lang = meaning ? "zh-CN" : "fr";
   el("[data-standard-answer]").lang = meaning ? "zh-CN" : "fr";
 }
@@ -220,7 +239,7 @@ function renderSync() {
   el<HTMLButtonElement>("[data-retry]").hidden = saving || !pending;
   next.disabled = saving || Boolean(pending);
   setup.querySelector<HTMLButtonElement>("button")!.disabled =
-    !ready || Boolean(pending);
+    !ready || starting || Boolean(pending);
   renderMode();
 }
 
@@ -249,6 +268,11 @@ function readPending(id: string, practice: PracticeKind): Pending | null {
       verbs.some((verb) => verb.infinitive === value.verb) &&
       (practice === "meaning" ||
         tenses.some((tense) => tense.id === value.tense)) &&
+      (value.version !== 2 ||
+        practice === "meaning" ||
+        (Number.isInteger(value.person) &&
+          value.person >= 0 &&
+          value.person < 6)) &&
       typeof value.correct === "boolean"
     )
       return { ...value, kind: practice };
@@ -268,19 +292,37 @@ async function syncPending() {
   renderSync();
   try {
     const { data, error } = await client.rpc(
-      attempt.kind === "meaning"
-        ? "record_verb_meaning_answer"
-        : "record_conjugation_answer",
+      attempt.version === 2
+        ? "record_practice_answer"
+        : attempt.kind === "meaning"
+          ? "record_verb_meaning_answer"
+          : "record_conjugation_answer",
       {
         p_attempt_id: attempt.id,
         p_verb: attempt.verb,
         ...(attempt.kind === "conjugation" ? { p_tense: attempt.tense } : {}),
         p_correct: attempt.correct,
+        ...(attempt.version === 2
+          ? {
+              p_kind: attempt.kind,
+              ...(attempt.kind === "conjugation"
+                ? { p_person: attempt.person }
+                : {}),
+            }
+          : {}),
       },
     );
     if (requestEpoch !== epoch) return;
-    if (error || !data?.[0]) throw error ?? new Error("Missing progress");
-    const updated = data[0] as PracticeProgress;
+    const updated = (attempt.version === 2 ? data?.progress : data?.[0]) as
+      PracticeProgress | undefined;
+    if (error || !updated) throw error ?? new Error("Missing progress");
+    if (attempt.version === 2 && data.mistake) {
+      mistakes = mistakes.filter(
+        (m) =>
+          m.kind !== data.mistake.kind || m.item_key !== data.mistake.item_key,
+      );
+      mistakes.push(data.mistake);
+    }
     rows = rows.filter(
       (row) => row.verb !== updated.verb || row.tense !== updated.tense,
     );
@@ -292,7 +334,20 @@ async function syncPending() {
       /* Optional retry storage. */
     }
     renderStats();
-    say("练习进度已同步。", "Practice progress synced.");
+    const review =
+      attempt.version === 2 ? (data.mistake as Mistake | null) : null;
+    say(
+      review
+        ? review.mastered_at
+          ? "这道错题已掌握，进度已同步。"
+          : `进度已同步，下次复习：${new Date(review.next_review_at!).toLocaleString(document.documentElement.lang)}`
+        : "练习进度已同步。",
+      review
+        ? review.mastered_at
+          ? "Mistake mastered. Progress synced."
+          : `Progress synced. Next review: ${new Date(review.next_review_at!).toLocaleString(document.documentElement.lang)}`
+        : "Practice progress synced.",
+    );
   } catch {
     if (requestEpoch !== epoch) return;
     syncMessage = retryStored
@@ -337,9 +392,13 @@ async function loadProgress() {
             .from("conjugation_progress")
             .select("verb, tense, attempts, correct, last_practiced_at")
             .eq("user_id", userId);
-    const { data, error } = await query;
+    const [{ data, error }, mistakeResult] = await Promise.all([
+      query,
+      client.from("vocabulary_mistakes").select("*").eq("user_id", userId),
+    ]);
     if (requestEpoch !== epoch) return;
-    if (error) throw error;
+    if (error || mistakeResult.error) throw error ?? mistakeResult.error;
+    mistakes = (mistakeResult.data ?? []) as Mistake[];
     rows = (data ?? []) as PracticeProgress[];
     ready = true;
     el("[data-load-panel]").hidden = true;
@@ -378,6 +437,7 @@ function showSession(session: Session | null) {
   loading = false;
   saving = false;
   rows = [];
+  mistakes = [];
   round = [];
   pending = id
     ? (readPending(id, "conjugation") ?? readPending(id, "meaning"))
@@ -404,36 +464,87 @@ function showSession(session: Session | null) {
   void loadProgress();
 }
 
-setup.addEventListener("submit", (event) => {
+setup.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!ready || pending || !userId) return;
+  if (!ready || starting || pending || !userId) return;
   const count = sizeControl.read();
   if (!count) return;
-  round =
-    kind === "meaning"
-      ? createMeaningRound(Math.random, count)
-      : createRound(
-          el<HTMLSelectElement>("#tense-mode").value as Mode,
-          Math.random,
-          count,
-        );
-  index = 0;
-  roundCorrect = 0;
-  setup.hidden = true;
-  el("[data-summary]").hidden = true;
-  el("[data-question]").hidden = false;
-  say(
-    round.length < count
-      ? `当前可用 ${round.length} 题，本轮按实际数量练习。`
-      : "",
-    round.length < count
-      ? `Only ${round.length} questions are available; this round uses that number.`
-      : "",
-  );
-  renderStats();
-  renderMode();
-  showQuestion();
+  starting = true;
+  renderSync();
+  const requestEpoch = epoch;
+  try {
+    const { data, error } = await client
+      .from("vocabulary_mistakes")
+      .select("*")
+      .eq("user_id", userId);
+    if (requestEpoch !== epoch) return;
+    if (error) throw error;
+    mistakes = (data ?? []) as Mistake[];
+    const mode = el<HTMLSelectElement>("#tense-mode").value as Mode;
+    const only = el<HTMLInputElement>("[data-review-only]").checked;
+    const priority: PracticeQuestion[] = dueMistakes(
+      mistakes,
+      kind,
+      Date.now(),
+      mode,
+    ).flatMap((m) => {
+      const verb = verbs.find((v) => v.infinitive === m.verb);
+      return verb
+        ? [
+            kind === "meaning"
+              ? { verb }
+              : {
+                  verb,
+                  tense: m.tense as Question["tense"],
+                  person: m.person!,
+                },
+          ]
+        : [];
+    });
+    const pool: PracticeQuestion[] = only
+      ? []
+      : kind === "meaning"
+        ? createMeaningRound(Math.random, count)
+        : createRound(mode, Math.random, count);
+    const selectedRound = prioritizeQuestions(priority, pool, count, (q) =>
+      kind === "meaning"
+        ? q.verb.infinitive
+        : `${q.verb.infinitive}:${q.tense}:${q.person}`,
+    );
+    if (!selectedRound.length) {
+      say(
+        "当前没有到期错题，可在错题本查看下次复习时间。",
+        "No mistakes are due. Check the notebook for the next review time.",
+      );
+      return;
+    }
+    round = selectedRound;
+    index = 0;
+    roundCorrect = 0;
+    setup.hidden = true;
+    el("[data-summary]").hidden = true;
+    el("[data-question]").hidden = false;
+    say(
+      round.length < count
+        ? `本轮可练 ${round.length} 题，按实际数量练习。`
+        : "",
+      round.length < count
+        ? `Available questions this round: ${round.length}.`
+        : "",
+    );
+    renderStats();
+    showQuestion();
+  } catch {
+    say("加载错题失败，请重试。", "Couldn't load mistakes. Please retry.");
+  } finally {
+    starting = false;
+    renderSync();
+  }
 });
+el("#tense-mode").addEventListener("change", renderMode);
+window.setInterval(() => {
+  if (userId) renderMode();
+}, 30_000);
 
 input.addEventListener("compositionstart", () => {
   composing = true;
@@ -485,7 +596,10 @@ function recordAnswer(correct: boolean) {
     id: crypto.randomUUID(),
     verb: round[index].verb.infinitive,
     kind,
-    ...(kind === "conjugation" ? { tense: round[index].tense } : {}),
+    version: 2,
+    ...(kind === "conjugation"
+      ? { tense: round[index].tense, person: round[index].person }
+      : {}),
     correct: verdict,
   };
   retryStored = false;

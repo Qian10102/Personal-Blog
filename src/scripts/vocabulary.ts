@@ -1,6 +1,18 @@
+import {
+  type Mistake,
+  dueMistakes,
+  prioritizeQuestions,
+  reviewOutcome,
+  reviewIntervals,
+} from "../lib/mistake-review";
+import { renderMistakeNotebook } from "../lib/mistake-notebook";
 import { createWordSession } from "../lib/study-session";
 import { sessionSizeControl } from "../lib/session-size-control";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient,
+  type SupabaseClient,
+  type Session,
+} from "@supabase/supabase-js";
 
 type Rating = "again" | "hard" | "good" | "easy";
 type WordCard = {
@@ -39,8 +51,51 @@ const sizeControl = sessionSizeControl(sessionSetup, () => "word");
 let sessionIds: string[] = [];
 let sessionIndex = 0;
 let sessionStarted = false;
+let sessionRequested = 0;
+let sessionOnly = false;
+let message: [string, string] = ["", ""];
 let supabase: SupabaseClient | null = null;
 let cards: WordCard[] = [];
+let mistakes: Mistake[] = [];
+let ownerId: string | null = null;
+let sessionKnown = false;
+let epoch = 0;
+type PendingReview = {
+  id: string;
+  cardId: string;
+  rating: Rating;
+  timezone: string;
+};
+let pendingReview: PendingReview | null = null;
+let retryStored = true;
+const pendingKey = (id: string) => `word-review-pending:${id}`;
+function clearPending() {
+  if (ownerId) {
+    try {
+      sessionStorage.removeItem(pendingKey(ownerId));
+    } catch {
+      /* Optional storage. */
+    }
+  }
+  pendingReview = null;
+}
+function restorePending(id: string): PendingReview | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(pendingKey(id)) ?? "null");
+    if (
+      value &&
+      /^[0-9a-f-]{36}$/i.test(value.id) &&
+      /^[0-9a-f-]{36}$/i.test(value.cardId) &&
+      ["again", "hard", "good", "easy"].includes(value.rating) &&
+      typeof value.timezone === "string" &&
+      value.timezone.length < 100
+    )
+      return value;
+  } catch {
+    /* Optional storage. */
+  }
+  return null;
+}
 let activeCard: WordCard | null = null;
 let editingId: string | null = null;
 let busy = false;
@@ -73,7 +128,8 @@ function language() {
 }
 
 function say(zh: string, en: string) {
-  if (status) status.textContent = language() === "zh" ? zh : en;
+  message = [zh, en];
+  if (status) status.textContent = text(...message);
 }
 
 function text(zh: string, en: string) {
@@ -87,8 +143,23 @@ function setBusy(value: boolean) {
       "[data-word-form] button, [data-rating], [data-login-form] button, [data-word-setup] button",
     )
     .forEach((button) => {
-      button.disabled = value;
+      button.disabled = value || Boolean(pendingReview);
     });
+  document.querySelector<HTMLElement>("[data-word-sync]")!.hidden =
+    !pendingReview;
+  document.querySelector<HTMLButtonElement>("[data-word-retry]")!.disabled =
+    value;
+  document.querySelector<HTMLElement>("[data-word-sync-message]")!.textContent =
+    value
+      ? text("正在同步进度…", "Syncing progress…")
+      : text(
+          retryStored
+            ? "本题尚未确认同步，请重试后继续。刷新后仍可重试。"
+            : "本题尚未确认同步，请在当前页面重试；浏览器未能保存待同步请求。",
+          retryStored
+            ? "This answer has not been confirmed as synced. Retry to continue, including after a refresh."
+            : "Retry on this page; browser storage could not save the pending request.",
+        );
 }
 
 function localDateKey(date = new Date()) {
@@ -108,13 +179,6 @@ function reviewInterval(card: WordCard, rating: Rating) {
   return card.interval_days <= 0
     ? 3
     : Math.max(card.interval_days + 1, Math.round(card.interval_days * 2.5));
-}
-
-function nextDue(card: WordCard, rating: Rating, now: Date) {
-  if (rating === "again") return new Date(now.getTime() + 10 * 60 * 1000);
-  if (rating === "hard") return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const days = reviewInterval(card, rating);
-  return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
 function dueCards() {
@@ -151,6 +215,25 @@ function setTab(tab: "study" | "manage") {
 }
 
 function renderStudy() {
+  document.querySelector<HTMLElement>("[data-session-note]")!.textContent =
+    sessionRequested > sessionIds.length
+      ? text(
+          sessionOnly
+            ? `本轮有 ${sessionIds.length} 个到期错题；可在错题本查看复习时间。`
+            : `本轮可练 ${sessionIds.length} 个：优先到期复习，新词受每日 30 个额度限制。`,
+          sessionOnly
+            ? `This round has ${sessionIds.length} due mistakes. Check the notebook for review times.`
+            : `This round has ${sessionIds.length} words: due reviews first, with up to 30 new words a day.`,
+        )
+      : "";
+  renderMistakeNotebook(
+    document.querySelector<HTMLElement>("[data-mistake-panel]")!,
+    mistakes,
+    "word",
+    (id) =>
+      cards.find((c) => c.id === id)?.word ??
+      text("已删除的词条", "Deleted word"),
+  );
   const due = dueCards();
   const fresh = newCards();
   const allowance = Math.max(0, 30 - studiedToday());
@@ -193,7 +276,7 @@ function renderStudy() {
           `Word ${sessionIndex + 1} of ${sessionIds.length} · ${sessionIndex} completed`,
         )
       : "";
-  if (!learnable) {
+  if (!learnable && !inRound) {
     const title = document.querySelector<HTMLElement>("[data-empty-title]")!;
     const copy = document.querySelector<HTMLElement>("[data-empty-copy]")!;
     if (cards.length === 0) {
@@ -240,17 +323,44 @@ function renderStudy() {
   document.querySelector<HTMLElement>("[data-card-example]")!.textContent =
     activeCard.example ?? "";
   const card = document.querySelector<HTMLButtonElement>("[data-flashcard]")!;
-  card.setAttribute("aria-expanded", "false");
-  document.querySelector<HTMLElement>("[data-card-answer]")!.hidden = true;
-  document.querySelector<HTMLElement>("[data-card-hint]")!.hidden = false;
-  document.querySelector<HTMLElement>("[data-ratings]")!.hidden = true;
+  const wasRevealed =
+    card.dataset.cardId === activeCard.id &&
+    card.getAttribute("aria-expanded") === "true";
+  card.dataset.cardId = activeCard.id;
+  card.setAttribute("aria-expanded", String(wasRevealed));
+  document.querySelector<HTMLElement>("[data-card-answer]")!.hidden =
+    !wasRevealed;
+  document.querySelector<HTMLElement>("[data-card-hint]")!.hidden = wasRevealed;
+  document.querySelector<HTMLElement>("[data-ratings]")!.hidden = !wasRevealed;
+  const mistake = mistakes.find(
+    (m) => m.kind === "word" && m.card_id === activeCard!.id && !m.mastered_at,
+  );
   document
-    .querySelectorAll<HTMLElement>("[data-rating-hint]")
+    .querySelectorAll<HTMLElement>("[data-rating] small")
     .forEach((hint) => {
-      hint.textContent = text(
-        `${reviewInterval(activeCard!, hint.dataset.ratingHint as Rating)} 天后`,
-        `in ${reviewInterval(activeCard!, hint.dataset.ratingHint as Rating)} days`,
-      );
+      const rating = hint.closest<HTMLButtonElement>("[data-rating]")!.dataset
+        .rating as Rating;
+      // Dynamic hints must not be overwritten by the global language renderer.
+      hint.removeAttribute("data-ui-text");
+      const outcome = mistake
+        ? reviewOutcome(mistake, rating !== "again", Date.now())
+        : null;
+      hint.textContent =
+        rating === "again"
+          ? text("10 分钟", "10 min")
+          : outcome
+            ? outcome.mastered_at
+              ? text("完成后掌握", "Master after review")
+              : outcome.stage === mistake?.stage
+                ? text("保持原定时间", "Keep scheduled time")
+                : text(
+                    `${reviewIntervals[outcome.stage] / 86400_000} 天后`,
+                    `in ${reviewIntervals[outcome.stage] / 86400_000} ${outcome.stage === 1 ? "day" : "days"}`,
+                  )
+            : text(
+                `${reviewInterval(activeCard!, rating)} 天后`,
+                `in ${reviewInterval(activeCard!, rating)} ${reviewInterval(activeCard!, rating) === 1 ? "day" : "days"}`,
+              );
     });
 }
 
@@ -295,7 +405,15 @@ function renderList() {
 }
 
 function beginEdit(card: WordCard) {
-  if (!wordForm || !formTitle || !saveButton || !cancelEdit) return;
+  if (
+    busy ||
+    pendingReview ||
+    !wordForm ||
+    !formTitle ||
+    !saveButton ||
+    !cancelEdit
+  )
+    return;
   editingId = card.id;
   wordForm.querySelector<HTMLInputElement>("[name=word]")!.value = card.word;
   wordForm.querySelector<HTMLTextAreaElement>("[name=meaning]")!.value =
@@ -317,20 +435,28 @@ function resetForm() {
 }
 
 async function loadCards() {
-  if (!supabase) return;
-  const { data, error } = await supabase
-    .from("vocabulary_cards")
-    .select("*")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  cards = (data ?? []) as WordCard[];
+  if (!supabase || !ownerId) return;
+  const requestEpoch = epoch;
+  const [cardResult, mistakeResult] = await Promise.all([
+    supabase
+      .from("vocabulary_cards")
+      .select("*")
+      .eq("user_id", ownerId)
+      .order("created_at", { ascending: true }),
+    supabase.from("vocabulary_mistakes").select("*").eq("user_id", ownerId),
+  ]);
+  if (requestEpoch !== epoch) return;
+  if (cardResult.error || mistakeResult.error)
+    throw cardResult.error ?? mistakeResult.error;
+  cards = (cardResult.data ?? []) as WordCard[];
+  mistakes = (mistakeResult.data ?? []) as Mistake[];
   renderStudy();
   renderList();
   scheduleDueRefresh();
 }
 
 async function deleteCard(card: WordCard) {
-  if (!supabase || busy) return;
+  if (!supabase || busy || pendingReview) return;
   const confirmed = window.confirm(
     text(`确定删除“${card.word}”吗？`, `Delete “${card.word}”?`),
   );
@@ -352,72 +478,127 @@ async function deleteCard(card: WordCard) {
 }
 
 async function submitRating(rating: Rating) {
-  if (!supabase || !activeCard || busy) return;
-  setBusy(true);
-  const now = new Date();
-  const dueAt = nextDue(activeCard, rating, now);
-  const patch: Partial<WordCard> = {
-    first_studied_at: activeCard.first_studied_at ?? now.toISOString(),
-    introduced_on: activeCard.introduced_on ?? localDateKey(now),
-    last_rating: rating,
-    due_at: dueAt.toISOString(),
-    interval_days: reviewInterval(activeCard, rating),
-    review_count: activeCard.review_count + 1,
-    updated_at: now.toISOString(),
+  if (!supabase || !ownerId || !activeCard || busy || pendingReview) return;
+  pendingReview = {
+    id: crypto.randomUUID(),
+    cardId: activeCard.id,
+    rating,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
-  const { error } = await supabase
-    .from("vocabulary_cards")
-    .update(patch)
-    .eq("id", activeCard.id);
-  setBusy(false);
-  if (error)
-    return say(
-      "复习进度保存失败，请重试。",
-      "Couldn't save your review. Please try again.",
-    );
-  cards = cards.map((card) =>
-    card.id === activeCard!.id ? { ...card, ...patch } : card,
-  );
-  sessionIndex++;
-  renderStudy();
-  renderList();
-  scheduleDueRefresh();
-  if (sessionIndex === sessionIds.length)
-    document.querySelector<HTMLElement>("[data-word-summary]")!.focus();
-  else document.querySelector<HTMLButtonElement>("[data-flashcard]")!.focus();
-  say("复习进度已同步。", "Review progress synced.");
+  retryStored = false;
+  try {
+    sessionStorage.setItem(pendingKey(ownerId), JSON.stringify(pendingReview));
+    retryStored = true;
+  } catch {
+    /* In-memory retry remains available. */
+  }
+  await syncWordPending();
 }
+
+async function syncWordPending() {
+  if (!supabase || !ownerId || !pendingReview || busy) return;
+  const attempt = pendingReview;
+  const requestEpoch = epoch;
+  setBusy(true);
+  try {
+    const { data, error } = await supabase.rpc("record_practice_answer", {
+      p_attempt_id: attempt.id,
+      p_kind: "word",
+      p_correct: attempt.rating !== "again",
+      p_card_id: attempt.cardId,
+      p_rating: attempt.rating,
+      p_timezone: attempt.timezone,
+    });
+    if (requestEpoch !== epoch) return;
+    if (error?.code === "23514") {
+      clearPending();
+      sessionIds = sessionIds.slice(0, sessionIndex);
+      renderStudy();
+      say(
+        "今日的新词额度已用完，本轮结束。已提交的进度已保留。",
+        "Today's new-word allowance is used up. This round has ended; saved progress is retained.",
+      );
+      return;
+    }
+    if (error || !data) throw error ?? new Error("Missing review");
+    const card = data.card as WordCard | null;
+    cards = cards.filter((c) => c.id !== attempt.cardId);
+    if (card) cards.push(card);
+    const mistake = data.mistake as Mistake | null;
+    mistakes = mistakes.filter(
+      (m) => m.kind !== "word" || m.card_id !== attempt.cardId,
+    );
+    if (mistake) mistakes.push(mistake);
+    clearPending();
+    if (sessionIds[sessionIndex] === attempt.cardId) sessionIndex++;
+    renderStudy();
+    renderList();
+    scheduleDueRefresh();
+    if (sessionStarted && sessionIndex === sessionIds.length)
+      document.querySelector<HTMLElement>("[data-word-summary]")!.focus();
+    else if (activeCard)
+      document.querySelector<HTMLButtonElement>("[data-flashcard]")!.focus();
+    say(
+      mistake
+        ? mistake.mastered_at
+          ? "这道错题已掌握，进度已同步。"
+          : `进度已同步，下次复习：${new Date(mistake.next_review_at!).toLocaleString(document.documentElement.lang)}`
+        : "复习进度已同步。",
+      mistake
+        ? mistake.mastered_at
+          ? "Mistake mastered. Progress synced."
+          : `Progress synced. Next review: ${new Date(mistake.next_review_at!).toLocaleString(document.documentElement.lang)}`
+        : "Review progress synced.",
+    );
+  } catch {
+    if (requestEpoch === epoch)
+      say(
+        "复习进度保存尚未确认，请重试同步。",
+        "Your review has not been confirmed as saved. Retry sync.",
+      );
+  } finally {
+    if (requestEpoch === epoch) setBusy(false);
+  }
+}
+document
+  .querySelector("[data-word-retry]")!
+  .addEventListener("click", () => void syncWordPending());
 
 sessionSetup.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!supabase || busy) return;
+  if (!supabase || busy || pendingReview) return;
+  const requestEpoch = epoch;
   const count = sizeControl.read();
   if (!count) return;
   setBusy(true);
   try {
     await loadCards();
-    sessionIds = createWordSession(
-      cards,
+    if (requestEpoch !== epoch) return;
+    const only =
+      document.querySelector<HTMLInputElement>("[data-review-only]")!.checked;
+    const priority = dueMistakes(mistakes, "word", Date.now()).flatMap(
+      (m) => cards.find((c) => c.id === m.card_id) ?? [],
+    );
+    const pool = only
+      ? []
+      : createWordSession(cards, count, Date.now(), localDateKey());
+    sessionIds = prioritizeQuestions(
+      priority,
+      pool,
       count,
-      Date.now(),
-      localDateKey(),
+      (card) => card.id,
     ).map((card) => card.id);
     sessionIndex = 0;
     sessionStarted = sessionIds.length > 0;
-    document.querySelector<HTMLElement>("[data-session-note]")!.textContent =
-      sessionIds.length < count
-        ? text(
-            `本轮可练 ${sessionIds.length} 个：优先到期复习，新词受每日 30 个额度限制。`,
-            `This round has ${sessionIds.length} words: due reviews first, with up to 30 new words a day.`,
-          )
-        : "";
+    sessionRequested = count;
+    sessionOnly = only;
     renderStudy();
     if (sessionStarted)
       document.querySelector<HTMLButtonElement>("[data-flashcard]")!.focus();
   } catch {
     say("加载词库失败，请重试。", "Couldn't load words. Please retry.");
   } finally {
-    setBusy(false);
+    if (requestEpoch === epoch) setBusy(false);
   }
 });
 
@@ -453,7 +634,7 @@ cancelEdit?.addEventListener("click", resetForm);
 
 wordForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!supabase || busy) return;
+  if (!supabase || busy || pendingReview) return;
   const values = new FormData(wordForm);
   const word = String(values.get("word") ?? "").trim();
   const meaning = String(values.get("meaning") ?? "").trim();
@@ -486,7 +667,7 @@ wordForm?.addEventListener("submit", async (event) => {
 
 loginForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!supabase || busy) return;
+  if (!supabase || busy || pendingReview) return;
   const email = String(new FormData(loginForm).get("email") ?? "")
     .trim()
     .toLowerCase();
@@ -522,6 +703,8 @@ document
   });
 
 document.addEventListener("ui-language-change", () => {
+  if (status) status.textContent = text(...message);
+  setBusy(busy);
   renderStudy();
   renderList();
   if (editingId) {
@@ -536,14 +719,32 @@ if (!url || !anonKey) {
   if (warning) warning.hidden = false;
 } else {
   supabase = createClient(url, anonKey);
-  const showSession = async (email: string | undefined) => {
+  const showSession = async (session: Session | null) => {
+    const email = session?.user.email;
     const authorized = email?.toLowerCase() === allowedEmail;
+    const nextOwner = authorized ? session!.user.id : null;
+    if (sessionKnown && nextOwner === ownerId && (nextOwner || !email)) return;
+    sessionKnown = true;
+    epoch++;
+    ownerId = nextOwner;
+    sessionIds = [];
+    sessionIndex = 0;
+    sessionStarted = false;
+    sessionRequested = 0;
+    activeCard = null;
+    cards = [];
+    mistakes = [];
+    resetForm();
+    say("", "");
+    pendingReview = ownerId ? restorePending(ownerId) : null;
+    busy = false;
     if (loginPanel) loginPanel.hidden = Boolean(authorized);
     if (appPanel) appPanel.hidden = !authorized;
     if (!authorized) {
       if (dueRefreshTimer !== undefined) window.clearTimeout(dueRefreshTimer);
       if (email) await supabase?.auth.signOut();
       cards = [];
+      mistakes = [];
       sessionIds = [];
       sessionIndex = 0;
       sessionStarted = false;
@@ -555,17 +756,24 @@ if (!url || !anonKey) {
       email!;
     try {
       await loadCards();
+      if (pendingReview && !cards.some((c) => c.id === pendingReview!.cardId))
+        clearPending();
+      setBusy(false);
+      await syncWordPending();
     } catch {
+      setBusy(false);
       say(
         "加载词库失败，请检查 Supabase 数据库配置。",
         "Couldn't load your words. Check the Supabase database setup.",
       );
     }
   };
-  void supabase.auth
-    .getSession()
-    .then(({ data }) => showSession(data.session?.user.email));
+  void supabase.auth.getSession().then(({ data }) => showSession(data.session));
   supabase.auth.onAuthStateChange((_event, session) => {
-    void showSession(session?.user.email);
+    window.setTimeout(() => void showSession(session), 0);
   });
 }
+
+window.setInterval(() => {
+  if (ownerId) renderStudy();
+}, 30_000);

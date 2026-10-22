@@ -1828,3 +1828,44 @@ button:active,
   display: grid;
   gap: 0.5rem;
 }
+
+.review-only {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.8rem;
+}
+.conjugation-setup .review-only input {
+  width: 1.1rem;
+  min-height: 1.1rem;
+  accent-color: var(--accent);
+}
+.mistake-review {
+  margin-block: 1.5rem;
+  border-top: 1px solid var(--line-subtle);
+  padding-top: 1rem;
+}
+.mistake-review summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  font-weight: 650;
+}
+.mistake-list {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 28rem;
+  overflow-y: auto;
+}
+.mistake-list article {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.mistake-list span,
+.mistake-list small {
+  color: var(--muted);
+  font-size: 0.85rem;
+}

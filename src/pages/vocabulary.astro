@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import UiText from "../components/UiText.astro";
+import MistakeReview from "../components/MistakeReview.astro";
 import SessionSize from "../components/SessionSize.astro";
 import VocabularyNavigation from "../components/VocabularyNavigation.astro";
 ---
@@ -150,6 +151,12 @@ import VocabularyNavigation from "../components/VocabularyNavigation.astro";
 
         <form class="conjugation-setup" data-word-setup>
           <SessionSize prefix="word" />
+          <label class="review-only"
+            ><input type="checkbox" data-review-only /><UiText
+              zh="只练错题"
+              en="Due mistakes only"
+            /></label
+          >
           <button type="submit" class="vocabulary-primary"
             ><UiText zh="开始本轮" en="Start round" /></button
           >
@@ -216,6 +223,13 @@ import VocabularyNavigation from "../components/VocabularyNavigation.astro";
             data-en="Add a word">添加单词</button
           >
         </div>
+        <div class="conjugation-sync" data-word-sync hidden>
+          <p data-word-sync-message role="status"></p>
+          <button type="button" class="vocabulary-quiet" data-word-retry
+            ><UiText zh="重试同步" en="Retry sync" /></button
+          >
+        </div>
+        <MistakeReview />
       </section>
 
       <section
