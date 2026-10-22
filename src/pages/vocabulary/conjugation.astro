@@ -8,8 +8,8 @@ import { tenses } from "../../lib/conjugation";
 <BaseLayout
   title={{ zh: "法语动词变位", en: "French conjugation" }}
   description={{
-    zh: "100 个法语动词，六种常用时态。每次十题，记录你的进步。",
-    en: "Practice 100 French verbs across six tenses, ten questions at a time.",
+    zh: "100 个法语动词，练习六种时态或中文释义。每次十题，记录你的进步。",
+    en: "Practice conjugation or Chinese meanings for 100 French verbs, ten questions at a time.",
   }}
 >
   <section class="page-intro vocabulary-intro conjugation-intro">
@@ -20,8 +20,8 @@ import { tenses } from "../../lib/conjugation";
     <h1><UiText zh="让变位，成为习惯。" en="Find your French rhythm." /></h1>
     <p class="vocabulary-lead">
       <UiText
-        zh="100 个常用动词，六种时态。每次十题，慢慢熟悉。"
-        en="100 common verbs. Six tenses. Ten questions to build your confidence."
+        zh="100 个常用动词，练习变位或中文含义。每次十题，慢慢熟悉。"
+        en="100 common verbs. Practice conjugation or Chinese meanings, ten questions at a time."
       />
     </p>
   </section>
@@ -31,8 +31,27 @@ import { tenses } from "../../lib/conjugation";
     aria-labelledby="conjugation-title"
   >
     <h2 id="conjugation-title" class="sr-only">
-      <UiText zh="法语动词变位练习" en="French conjugation practice" />
+      <UiText zh="法语动词练习" en="French verb practice" />
     </h2>
+    <div
+      class="verb-practice-modes"
+      role="group"
+      aria-label="练习模式"
+      data-ui-aria-label
+      data-zh="练习模式"
+      data-en="Practice mode"
+    >
+      <button
+        type="button"
+        data-practice-kind="conjugation"
+        aria-pressed="true"
+      >
+        <UiText zh="动词变位" en="Conjugation" />
+      </button>
+      <button type="button" data-practice-kind="meaning" aria-pressed="false">
+        <UiText zh="动词含义" en="Verb meanings" />
+      </button>
+    </div>
     <div class="vocabulary-config-warning" data-config-warning hidden>
       <strong><UiText zh="还差一步配置" en="One setup step remains" /></strong>
       <p>
@@ -45,7 +64,7 @@ import { tenses } from "../../lib/conjugation";
     <div class="vocabulary-login" data-login-panel hidden>
       <div>
         <p class="eyebrow"><UiText zh="个人练习" en="YOUR PRACTICE" /></p>
-        <h2><UiText zh="登录后开始变位练习" en="Sign in to practice" /></h2>
+        <h2><UiText zh="登录后开始练习" en="Sign in to practice" /></h2>
         <p class="vocabulary-muted">
           <UiText
             zh="使用背单词的授权账号，练习进度会自动同步。"
@@ -92,7 +111,7 @@ import { tenses } from "../../lib/conjugation";
         <div class="vocabulary-stats conjugation-stats">
           <div>
             <strong data-total-attempts>0</strong><span
-              ><UiText zh="累计答题" en="Total answers" /></span
+              ><span data-attempts-label>累计变位答题</span></span
             >
           </div>
           <div>
@@ -107,7 +126,7 @@ import { tenses } from "../../lib/conjugation";
           </div>
         </div>
         <form class="conjugation-setup" data-setup>
-          <div>
+          <div data-tense-setup>
             <label for="tense-mode"
               ><UiText zh="练习时态" en="Practice tense" /></label
             >
@@ -136,12 +155,7 @@ import { tenses } from "../../lib/conjugation";
             ><UiText zh="开始 10 题练习" en="Start 10 questions" /></button
           >
         </form>
-        <p class="conjugation-instructions">
-          <UiText
-            zh="只输入变位形式，不含主语或 que；复合过去时包含助动词。大小写、空格和重音差异均不影响判定。"
-            en="Enter only the verb form, without the subject or que. Include the auxiliary for the compound past. Case, spaces and accents do not affect grading."
-          />
-        </p>
+        <p class="conjugation-instructions" data-practice-instructions></p>
         <div class="conjugation-question" data-question hidden>
           <div class="conjugation-question-meta">
             <span data-question-count></span><span data-question-tense></span>
@@ -159,7 +173,7 @@ import { tenses } from "../../lib/conjugation";
           <p class="conjugation-agreement" data-agreement></p>
           <form class="conjugation-answer-form" data-answer-form>
             <label for="conjugation-answer"
-              ><UiText zh="你的答案" en="Your answer" /></label
+              ><span data-answer-label>你的变位答案</span></label
             >
             <input
               id="conjugation-answer"
@@ -173,7 +187,7 @@ import { tenses } from "../../lib/conjugation";
               aria-describedby="answer-feedback"
             />
             <button class="vocabulary-primary" type="submit" data-check
-              ><UiText zh="检查答案" en="Check answer" /></button
+              >检查答案</button
             >
           </form>
           <div
@@ -191,6 +205,36 @@ import { tenses } from "../../lib/conjugation";
                 data-standard-answer></span>
             </p>
           </div>
+          <div class="meaning-assessment" data-self-assessment hidden>
+            <p>
+              <UiText
+                zh="意思相同，答出任一常用义即可。请对照答案自行判断。"
+                en="Any listed common sense is enough. Compare your answer and assess it yourself."
+              />
+            </p>
+            <div
+              role="group"
+              aria-label="自评结果"
+              data-ui-aria-label
+              data-zh="自评结果"
+              data-en="Self-assessment"
+            >
+              <button
+                type="button"
+                class="vocabulary-quiet"
+                data-self-rating="false"
+              >
+                <UiText zh="答错了" en="I got it wrong" />
+              </button>
+              <button
+                type="button"
+                class="vocabulary-primary"
+                data-self-rating="true"
+              >
+                <UiText zh="答对了" en="I got it right" />
+              </button>
+            </div>
+          </div>
           <button
             type="button"
             class="vocabulary-primary conjugation-next"
@@ -202,8 +246,8 @@ import { tenses } from "../../lib/conjugation";
           <h2 data-summary-score></h2>
           <p>
             <UiText
-              zh="进度已同步。选择时态，再练一轮。"
-              en="Progress synced. Choose a tense and try another round."
+              zh="进度已同步。选择练习模式，再练一轮。"
+              en="Progress synced. Choose a practice mode and try another round."
             />
           </p>
         </div>
@@ -214,8 +258,7 @@ import { tenses } from "../../lib/conjugation";
           >
         </div>
         <details class="conjugation-performance" open>
-          <summary><UiText zh="各时态表现" en="Performance by tense" /></summary
-          >
+          <summary data-performance-title>各时态表现</summary>
           <p class="vocabulary-muted" data-last-practiced></p>
           <div data-tense-stats></div>
         </details>

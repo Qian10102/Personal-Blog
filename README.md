@@ -16,7 +16,7 @@ npm run dev
 背词页面使用 Supabase Auth 和 Postgres。页面只允许 `qianzihanduo@gmail.com` 登录，词条表通过 RLS 将数据限制到该邮箱对应的账号。服务未配置时，页面会显示配置提示。
 
 1. 创建 Supabase 项目，在 Authentication 的用户注册设置中关闭公开注册，并邀请 `qianzihanduo@gmail.com`。
-2. 在 SQL Editor 中依次执行 `supabase/migrations/20260924000000_vocabulary_cards.sql` 和 `supabase/migrations/20261020000000_conjugation_progress.sql`。已配置词库的项目只需执行第二份迁移。迁移启用用户和邮箱双重隔离策略，并创建变位进度表与原子计数函数。
+2. 依次应用 `supabase/migrations/20260924000000_vocabulary_cards.sql`、`supabase/migrations/20261020000000_conjugation_progress.sql` 与 `supabase/migrations/20261022162053_verb_meaning_progress.sql`。已有项目只需补充尚未应用的迁移。三份迁移分别配置词库、变位进度与含义进度；数据按用户和授权邮箱隔离。对已有云端项目应用新迁移前需确认本次数据库变更。
 3. 配置邮件 SMTP，并将生产站点的 URL 添加为 Auth Site URL 和允许的重定向地址；两个页面的回调地址 `/vocabulary/` 和 `/vocabulary/conjugation/` 均需加入允许列表。本地开发时对应添加 `http://localhost:4321/vocabulary/` 和 `http://localhost:4321/vocabulary/conjugation/`。
 4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。若使用 GitHub Actions 发布，在仓库 Settings > Secrets and variables > Actions 中添加 `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 两个 Repository secrets；工作流会把它们传给构建步骤。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
 
@@ -31,6 +31,14 @@ npm run dev
 `conjugation_progress` 按账号、动词和时态保存答题总数、正确数和最近练习时间；页面显示累计、正确率和各时态表现。每题通过 `record_conjugation_answer` 同步，数据库原子递增；`conjugation_sync_receipts` 只保存账号和随机请求 ID 防止重试重复计数，不保存作答内容或逐题历史。两张表均启用 RLS；进度仅授权账号可读，写入只经检查身份的函数，回执不允许浏览器直接读写。
 
 保存失败时会阻止进入下一题并提供重试；当前标签页的待同步请求暂存在按账号隔离的 `sessionStorage` 中，刷新后可继续同步。若浏览器禁用存储，当前页面仍可重试，但刷新或关闭会丢失未确认的请求。刷新不会保留未完成的题目轮次，已同步的汇总会保留。数据库尚未迁移或网络不可用时显示加载失败，可重试，不显示为零进度。
+
+## 动词含义练习
+
+在“动词变位”页选择独立的“动词含义”模式，每轮随机抽取 10 个不同动词。题目展示法语原形，填写中文释义后点击“查看答案”，再选择“答对了 / 答错了”；答出任一常用义即可。未自评不计入完成进度，输入文字不参与自动判分。完成本轮后可切换模式，中途刷新会结束当前轮次。
+
+100 个动词的简明中文常用义保存在 `src/data/french-verb-meanings.ts`，编排与来源见 [释义说明](docs/reference/verb-meanings.md)。英文界面下作答与标准答案仍为中文。
+
+含义累计结果独立保存在 `verb_meaning_progress`，按账号和动词汇总；通过 `record_verb_meaning_answer` 原子更新，与变位的时态统计分开。公开 RPC 使用调用者权限，受保护的写入函数位于非公开 `private` schema，检查登录身份和授权邮箱；回执仅存账号和随机请求 ID，阻止重复计数，不保存中文输入文本。含义与变位使用不同的待同步存储键。含义进度尚未配置时可继续切换到原有变位模式。
 
 ## 腾讯云发布（服务器无需 Git）
 

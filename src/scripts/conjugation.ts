@@ -15,11 +15,26 @@ import {
   type Question,
 } from "../lib/conjugation.ts";
 import { verbs } from "../data/french-verbs.ts";
+import { verbMeanings } from "../data/french-verb-meanings.ts";
+import {
+  createMeaningRound,
+  revealMeaning,
+  rateMeaning,
+  type MeaningAnswer,
+} from "../lib/verb-meaning.ts";
 
+type PracticeKind = "conjugation" | "meaning";
+type PracticeQuestion = {
+  verb: Question["verb"];
+  tense?: Question["tense"];
+  person?: number;
+};
+type PracticeProgress = Omit<Progress, "tense"> & { tense?: Progress["tense"] };
 type Pending = {
   id: string;
   verb: string;
-  tense: Progress["tense"];
+  kind: PracticeKind;
+  tense?: Progress["tense"];
   correct: boolean;
 };
 const allowedEmail = "qianzihanduo@gmail.com";
@@ -34,8 +49,11 @@ const answerForm = el<HTMLFormElement>("[data-answer-form]");
 let client: SupabaseClient;
 let userId: string | null = null;
 let epoch = 0;
-let rows: Progress[] = [];
-let round: Question[] = [];
+let kind: PracticeKind = "conjugation";
+let rows: PracticeProgress[] = [];
+let round: PracticeQuestion[] = [];
+let meaningAnswer: MeaningAnswer = { phase: "writing" };
+let composing = false;
 let index = 0;
 let roundCorrect = 0;
 let answered = false;
@@ -47,7 +65,46 @@ let ready = false;
 let message: [string, string] = ["", ""];
 let syncMessage: [string, string] = ["", ""];
 let retryStored = true;
-const pendingKey = (id: string) => `conjugation-pending:${id}`;
+const pendingKey = (id: string, practice: PracticeKind) =>
+  `${practice === "meaning" ? "verb-meaning" : "conjugation"}-pending:${id}`;
+
+function renderMode() {
+  const meaning = kind === "meaning";
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-practice-kind]")
+    .forEach((button) => {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.practiceKind === kind),
+      );
+      button.disabled =
+        Boolean(pending) || (!setup.hidden ? false : Boolean(round[index]));
+    });
+  el("[data-tense-setup]").hidden = meaning;
+  el("[data-attempts-label]").textContent = meaning
+    ? text("累计释义自评", "Meaning assessments")
+    : text("累计变位答题", "Conjugation answers");
+  el("[data-answer-label]").textContent = meaning
+    ? text("中文释义", "Chinese meaning")
+    : text("你的变位答案", "Your conjugation");
+  el("[data-check]").textContent = meaning
+    ? text("查看答案", "Reveal answer")
+    : text("检查答案", "Check answer");
+  el("[data-performance-title]").textContent = meaning
+    ? text("动词含义表现", "Meaning performance")
+    : text("各时态表现", "Performance by tense");
+  el("[data-practice-instructions]").textContent = meaning
+    ? text(
+        "看法语动词，填写中文释义后查看答案，再自行判断对错。答出任一常用义即可；完成本轮后可切换模式。",
+        "Write a Chinese meaning for the French verb, reveal the answer, then assess yourself. Any listed common sense is enough. Switch modes after the round.",
+      )
+    : text(
+        "只输入变位形式，不含主语或 que；复合过去时包含助动词。大小写、空格和重音差异均不影响判定。完成本轮后可切换模式。",
+        "Enter only the verb form, without the subject or que. Include the auxiliary for the compound past. Case, spaces and accents do not affect grading. Switch modes after the round.",
+      );
+  input.lang = meaning ? "zh-CN" : "fr";
+  el("[data-standard-answer]").lang = meaning ? "zh-CN" : "fr";
+}
 
 function say(zh: string, en: string) {
   message = [zh, en];
@@ -55,7 +112,7 @@ function say(zh: string, en: string) {
 }
 
 function renderStats() {
-  const stats = summarizeProgress(rows);
+  const stats = summarizeProgress(rows as Progress[]);
   const accuracy = (attempts: number, correct: number) =>
     attempts ? `${Math.round((correct / attempts) * 100)}%` : "—";
   el("[data-total-attempts]").textContent = String(stats.total.attempts);
@@ -67,7 +124,10 @@ function renderStats() {
     ? `${roundCorrect} / ${roundLength}`
     : "—";
   el("[data-tense-stats]").replaceChildren(
-    ...stats.byTense.map((tense) => {
+    ...(kind === "meaning"
+      ? rows.map((row) => ({ ...row, zh: row.verb, en: row.verb }))
+      : stats.byTense
+    ).map((tense) => {
       const row = document.createElement("div");
       row.className = "conjugation-tense-row";
       const name = document.createElement("span");
@@ -83,25 +143,35 @@ function renderStats() {
   el("[data-last-practiced]").textContent = stats.total.last
     ? text("最近练习：", "Last practiced: ") +
       new Date(stats.total.last).toLocaleString(document.documentElement.lang)
-    : text(
-        "完成第一题后，这里会记录你的进步。",
-        "Your progress appears here after your first answer.",
-      );
+    : kind === "meaning"
+      ? text(
+          "完成第一次自评后，这里会记录你的进步。",
+          "Your progress appears after your first self-assessment.",
+        )
+      : text(
+          "完成第一题后，这里会记录你的进步。",
+          "Your progress appears here after your first answer.",
+        );
 }
 
 function renderQuestion() {
   const question = round[index];
   if (!question) return;
-  const tense = tenses.find((item) => item.id === question.tense)!;
+  const meaning = kind === "meaning";
+  const tense = tenses.find((item) => item.id === question.tense);
   el("[data-question-count]").textContent = text(
     `第 ${index + 1} / ${roundLength} 题`,
     `Question ${index + 1} of ${roundLength}`,
   );
-  el("[data-question-tense]").textContent =
-    `${text(tense.zh, tense.en)} · ${tense.fr}`;
+  el("[data-question-tense]").textContent = meaning
+    ? text("法语 → 中文", "French → Chinese")
+    : `${text(tense!.zh, tense!.en)} · ${tense!.fr}`;
   el("[data-verb]").textContent = question.verb.infinitive;
-  el("[data-person]").textContent =
-    `${question.tense === "subjonctif" ? "que " : ""}${pronouns[question.person]} …`;
+  el("[data-person]").textContent = meaning
+    ? ""
+    : `${question.tense === "subjonctif" ? "que " : ""}${pronouns[question.person!]} …`;
+  el("[data-person]").hidden = meaning;
+  el("[data-agreement]").hidden = meaning;
   const needsAgreement =
     question.tense === "passe-compose" && question.verb.auxiliary === "être";
   el("[data-agreement]").textContent = needsAgreement
@@ -112,13 +182,30 @@ function renderQuestion() {
     : "";
   el<HTMLProgressElement>("[data-round-progress]").value =
     index + Number(answered);
-  if (answered) {
-    el("[data-verdict]").textContent = verdict
-      ? text("答对了", "Correct")
-      : text("再记一次", "Keep practicing");
-    el("[data-standard-answer]").textContent =
-      question.verb.forms[question.tense][question.person];
+  const revealed = meaning && meaningAnswer.phase !== "writing";
+  el("[data-feedback]").hidden = !answered && !revealed;
+  el("[data-self-assessment]").hidden =
+    !meaning || meaningAnswer.phase !== "revealed";
+  el("[data-standard-answer]").textContent = "";
+  if (answered || revealed) {
+    el("[data-verdict]").textContent =
+      meaning && !answered
+        ? text("对照答案后自评", "Compare and assess yourself")
+        : verdict
+          ? text(
+              meaning ? "你标记为答对" : "答对了",
+              meaning ? "Marked correct" : "Correct",
+            )
+          : text(
+              meaning ? "你标记为答错" : "再记一次",
+              meaning ? "Marked incorrect" : "Keep practicing",
+            );
+    el("[data-standard-answer]").textContent = meaning
+      ? verbMeanings[question.verb.infinitive].join("；")
+      : question.verb.forms[question.tense!][question.person!];
   }
+  if (answered) el("[data-feedback]").dataset.correct = String(verdict);
+  else delete el("[data-feedback]").dataset.correct;
   next.textContent =
     index === roundLength - 1
       ? text("查看本轮结果", "See round results")
@@ -132,10 +219,13 @@ function renderSync() {
   next.disabled = saving || Boolean(pending);
   setup.querySelector<HTMLButtonElement>("button")!.disabled =
     !ready || Boolean(pending);
+  renderMode();
 }
 
 function showQuestion() {
   answered = false;
+  meaningAnswer = { phase: "writing" };
+  composing = false;
   input.value = "";
   input.disabled = false;
   el<HTMLButtonElement>("[data-check]").disabled = false;
@@ -145,18 +235,21 @@ function showQuestion() {
   input.focus();
 }
 
-function readPending(id: string): Pending | null {
+function readPending(id: string, practice: PracticeKind): Pending | null {
   try {
-    const value = JSON.parse(sessionStorage.getItem(pendingKey(id)) ?? "null");
+    const value = JSON.parse(
+      sessionStorage.getItem(pendingKey(id, practice)) ?? "null",
+    );
     if (
       value &&
       typeof value.id === "string" &&
       /^[0-9a-f-]{36}$/i.test(value.id) &&
       verbs.some((verb) => verb.infinitive === value.verb) &&
-      tenses.some((tense) => tense.id === value.tense) &&
+      (practice === "meaning" ||
+        tenses.some((tense) => tense.id === value.tense)) &&
       typeof value.correct === "boolean"
     )
-      return value;
+      return { ...value, kind: practice };
   } catch {
     /* Storage may be unavailable; in-memory retries still work. */
   }
@@ -172,22 +265,27 @@ async function syncPending() {
   syncMessage = ["正在同步进度…", "Syncing progress…"];
   renderSync();
   try {
-    const { data, error } = await client.rpc("record_conjugation_answer", {
-      p_attempt_id: attempt.id,
-      p_verb: attempt.verb,
-      p_tense: attempt.tense,
-      p_correct: attempt.correct,
-    });
+    const { data, error } = await client.rpc(
+      attempt.kind === "meaning"
+        ? "record_verb_meaning_answer"
+        : "record_conjugation_answer",
+      {
+        p_attempt_id: attempt.id,
+        p_verb: attempt.verb,
+        ...(attempt.kind === "conjugation" ? { p_tense: attempt.tense } : {}),
+        p_correct: attempt.correct,
+      },
+    );
     if (requestEpoch !== epoch) return;
     if (error || !data?.[0]) throw error ?? new Error("Missing progress");
-    const updated = data[0] as Progress;
+    const updated = data[0] as PracticeProgress;
     rows = rows.filter(
       (row) => row.verb !== updated.verb || row.tense !== updated.tense,
     );
     rows.push(updated);
     pending = null;
     try {
-      sessionStorage.removeItem(pendingKey(owner));
+      sessionStorage.removeItem(pendingKey(owner, attempt.kind));
     } catch {
       /* Optional retry storage. */
     }
@@ -214,8 +312,9 @@ async function syncPending() {
 }
 
 async function loadProgress() {
-  if (!userId || loading) return;
-  const requestEpoch = epoch;
+  if (!userId) return;
+  const requestEpoch = ++epoch;
+  const practice = kind;
   loading = true;
   ready = false;
   el("[data-load-panel]").hidden = false;
@@ -226,13 +325,20 @@ async function loadProgress() {
     "Loading practice progress…",
   );
   try {
-    const { data, error } = await client
-      .from("conjugation_progress")
-      .select("verb, tense, attempts, correct, last_practiced_at")
-      .eq("user_id", userId);
+    const query =
+      practice === "meaning"
+        ? client
+            .from("verb_meaning_progress")
+            .select("verb, attempts, correct, last_practiced_at")
+            .eq("user_id", userId)
+        : client
+            .from("conjugation_progress")
+            .select("verb, tense, attempts, correct, last_practiced_at")
+            .eq("user_id", userId);
+    const { data, error } = await query;
     if (requestEpoch !== epoch) return;
     if (error) throw error;
-    rows = (data ?? []) as Progress[];
+    rows = (data ?? []) as PracticeProgress[];
     ready = true;
     el("[data-load-panel]").hidden = true;
     el("[data-practice-panel]").hidden = false;
@@ -242,8 +348,12 @@ async function loadProgress() {
   } catch {
     if (requestEpoch !== epoch) return;
     el("[data-load-message]").textContent = text(
-      "无法加载练习进度，请检查网络连接及数据库配置。",
-      "Couldn't load progress. Check your connection and database setup.",
+      kind === "meaning"
+        ? "暂时无法加载动词含义进度，请重试，或切换到动词变位。"
+        : "无法加载练习进度，请检查网络连接及数据库配置。",
+      kind === "meaning"
+        ? "Couldn't load meaning progress. Retry or switch to conjugation."
+        : "Couldn't load progress. Check your connection and database setup.",
     );
     el("[data-reload]").hidden = false;
   } finally {
@@ -267,7 +377,10 @@ function showSession(session: Session | null) {
   saving = false;
   rows = [];
   round = [];
-  pending = id ? readPending(id) : null;
+  pending = id
+    ? (readPending(id, "conjugation") ?? readPending(id, "meaning"))
+    : null;
+  if (pending) kind = pending.kind;
   retryStored = true;
   answered = false;
   index = 0;
@@ -275,8 +388,10 @@ function showSession(session: Session | null) {
   el("[data-question]").hidden = true;
   el("[data-summary]").hidden = true;
   setup.hidden = false;
+  el("[data-self-assessment]").hidden = true;
   say("", "");
   renderStats();
+  renderSync();
   if (!id) {
     el("[data-user-email]").textContent = "";
     if (session) void client.auth.signOut();
@@ -289,7 +404,10 @@ function showSession(session: Session | null) {
 setup.addEventListener("submit", (event) => {
   event.preventDefault();
   if (!ready || pending || !userId) return;
-  round = createRound(el<HTMLSelectElement>("#tense-mode").value as Mode);
+  round =
+    kind === "meaning"
+      ? createMeaningRound()
+      : createRound(el<HTMLSelectElement>("#tense-mode").value as Mode);
   index = 0;
   roundCorrect = 0;
   setup.hidden = true;
@@ -297,7 +415,19 @@ setup.addEventListener("submit", (event) => {
   el("[data-question]").hidden = false;
   say("", "");
   renderStats();
+  renderMode();
   showQuestion();
+});
+
+input.addEventListener("compositionstart", () => {
+  composing = true;
+});
+input.addEventListener("compositionend", () => {
+  composing = false;
+});
+input.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.isComposing || composing))
+    event.preventDefault();
 });
 
 answerForm.addEventListener("submit", (event) => {
@@ -305,14 +435,30 @@ answerForm.addEventListener("submit", (event) => {
   if (
     !ready ||
     !userId ||
+    composing ||
     answered ||
     pending ||
     !round[index] ||
     !input.value.trim()
   )
     return;
+  if (kind === "meaning") {
+    const revealed = revealMeaning(meaningAnswer, input.value, composing);
+    if (revealed === meaningAnswer) return;
+    meaningAnswer = revealed;
+    input.disabled = true;
+    el<HTMLButtonElement>("[data-check]").disabled = true;
+    renderQuestion();
+    el<HTMLButtonElement>("[data-self-rating]").focus();
+    return;
+  }
+  recordAnswer(checkAnswer(round[index] as Question, input.value));
+});
+
+function recordAnswer(correct: boolean) {
+  if (answered || pending || !userId || !ready || !round[index]) return;
   answered = true;
-  verdict = checkAnswer(round[index], input.value);
+  verdict = correct;
   if (verdict) roundCorrect++;
   input.disabled = true;
   el<HTMLButtonElement>("[data-check]").disabled = true;
@@ -322,12 +468,13 @@ answerForm.addEventListener("submit", (event) => {
   pending = {
     id: crypto.randomUUID(),
     verb: round[index].verb.infinitive,
-    tense: round[index].tense,
+    kind,
+    ...(kind === "conjugation" ? { tense: round[index].tense } : {}),
     correct: verdict,
   };
   retryStored = false;
   try {
-    sessionStorage.setItem(pendingKey(userId), JSON.stringify(pending));
+    sessionStorage.setItem(pendingKey(userId, kind), JSON.stringify(pending));
     retryStored = true;
   } catch {
     /* Keep in-memory retry available. */
@@ -335,7 +482,48 @@ answerForm.addEventListener("submit", (event) => {
   renderQuestion();
   renderStats();
   void syncPending();
-});
+}
+
+document
+  .querySelectorAll<HTMLButtonElement>("[data-self-rating]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      if (kind !== "meaning" || answered || pending || !ready || !userId)
+        return;
+      const rated = rateMeaning(
+        meaningAnswer,
+        button.dataset.selfRating === "true",
+      );
+      if (rated === meaningAnswer || rated.phase !== "rated") return;
+      meaningAnswer = rated;
+      recordAnswer(rated.correct);
+    });
+  });
+
+document
+  .querySelectorAll<HTMLButtonElement>("[data-practice-kind]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.disabled || pending || saving) return;
+      const selected = button.dataset.practiceKind as PracticeKind;
+      if (selected === kind) return;
+      kind = selected;
+      pending = userId ? readPending(userId, kind) : null;
+      round = [];
+      rows = [];
+      index = 0;
+      roundCorrect = 0;
+      answered = false;
+      ready = false;
+      el("[data-question]").hidden = true;
+      el("[data-summary]").hidden = true;
+      setup.hidden = false;
+      say("", "");
+      renderMode();
+      renderStats();
+      if (userId) void loadProgress();
+    });
+  });
 
 next.addEventListener("click", () => {
   if (!answered || pending || saving) return;
@@ -348,6 +536,7 @@ next.addEventListener("click", () => {
     `${roundCorrect} of ${roundLength} correct`,
   );
   setup.hidden = false;
+  renderMode();
   el("[data-summary]").focus();
 });
 el("[data-retry]").addEventListener("click", () => void syncPending());
@@ -411,6 +600,7 @@ el<HTMLButtonElement>("[data-sign-out]").addEventListener(
 );
 
 document.addEventListener("ui-language-change", () => {
+  renderMode();
   renderStats();
   renderQuestion();
   renderSync();
@@ -422,8 +612,12 @@ document.addEventListener("ui-language-change", () => {
     );
   else if (!ready)
     el("[data-load-message]").textContent = text(
-      "无法加载练习进度，请检查网络连接及数据库配置。",
-      "Couldn't load progress. Check your connection and database setup.",
+      kind === "meaning"
+        ? "暂时无法加载动词含义进度，请重试，或切换到动词变位。"
+        : "无法加载练习进度，请检查网络连接及数据库配置。",
+      kind === "meaning"
+        ? "Couldn't load meaning progress. Retry or switch to conjugation."
+        : "Couldn't load progress. Check your connection and database setup.",
     );
   if (index === roundLength)
     el("[data-summary-score]").textContent = text(
@@ -431,6 +625,8 @@ document.addEventListener("ui-language-change", () => {
       `${roundCorrect} of ${roundLength} correct`,
     );
 });
+
+renderMode();
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL;
 const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;

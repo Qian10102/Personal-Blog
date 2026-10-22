@@ -394,6 +394,48 @@ html[data-theme="dark"] .theme-icon-dark {
 .vocabulary-stats.conjugation-stats {
   margin-top: 1.5rem;
 }
+.verb-practice-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+}
+.verb-practice-modes button {
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--line-subtle);
+  border-radius: 0.8rem;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.verb-practice-modes button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-raised));
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+.verb-practice-modes button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.meaning-assessment {
+  margin-top: 1rem;
+}
+.meaning-assessment p {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.meaning-assessment > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.meaning-assessment button {
+  flex: 1 1 8rem;
+  min-height: 2.75rem;
+}
 .conjugation-setup {
   display: flex;
   flex-wrap: wrap;
