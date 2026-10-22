@@ -1,0 +1,197 @@
+---
+import UiText from "./UiText.astro";
+import VocabularyNavigation from "./VocabularyNavigation.astro";
+
+interface Props {
+  mobile?: boolean;
+}
+const { mobile = false } = Astro.props;
+const optionsId = `vocabulary-options-${mobile ? "mobile" : "desktop"}`;
+const navigation = [
+  { href: "/", zh: "首页", en: "Home" },
+  { href: "/posts/", zh: "文章", en: "Articles" },
+  { href: "/vocabulary/", zh: "背单词", en: "Vocabulary" },
+  { href: "/search/", zh: "搜索", en: "Search" },
+  { href: "/about/", zh: "关于我", en: "About" },
+] as const;
+const isCurrentPage = (href: string) =>
+  href === "/"
+    ? Astro.url.pathname === href
+    : Astro.url.pathname.startsWith(href);
+---
+
+<nav
+  class={mobile ? "mobile-nav" : "desktop-nav"}
+  data-primary-navigation
+  data-ui-aria-label
+  data-zh="主导航"
+  data-en="Primary navigation"
+  aria-label="主导航"
+>
+  <div class="navigation-links">
+    {
+      navigation.map((item) =>
+        item.href === "/vocabulary/" ? (
+          <button
+            type="button"
+            class="vocabulary-menu-toggle"
+            data-vocabulary-toggle
+            data-current={isCurrentPage(item.href) ? "true" : undefined}
+            aria-controls={optionsId}
+            aria-expanded="false"
+          >
+            <UiText zh={item.zh} en={item.en} />
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path
+                d="m3 4.5 3 3 3-3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        ) : (
+          <a
+            href={item.href}
+            aria-current={isCurrentPage(item.href) ? "page" : undefined}
+          >
+            <UiText zh={item.zh} en={item.en} />
+          </a>
+        ),
+      )
+    }
+  </div>
+  <VocabularyNavigation dropdown id={optionsId} />
+</nav>
+
+<script>
+  const menus = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-primary-navigation]"),
+  ).map((root) => ({
+    root,
+    toggle: root.querySelector<HTMLButtonElement>("[data-vocabulary-toggle]")!,
+    panel: root.querySelector<HTMLElement>(".vocabulary-options")!,
+    scroller: root.querySelector<HTMLElement>(".navigation-links")!,
+  }));
+  type NavigationMenu = (typeof menus)[number];
+
+  function positionMenu(menu: NavigationMenu) {
+    const trigger = menu.toggle.getBoundingClientRect();
+    const root = menu.root.getBoundingClientRect();
+    const left = Math.max(
+      8,
+      Math.min(trigger.left, window.innerWidth - menu.panel.offsetWidth - 8),
+    );
+    menu.panel.style.left = `${left - root.left - menu.root.clientLeft}px`;
+  }
+
+  function closeMenu(menu: NavigationMenu, restoreFocus = false) {
+    menu.panel.hidden = true;
+    menu.toggle.setAttribute("aria-expanded", "false");
+    if (restoreFocus) menu.toggle.focus({ preventScroll: true });
+  }
+
+  function openMenu(menu: NavigationMenu) {
+    menus.forEach((other) => {
+      if (other !== menu) closeMenu(other);
+    });
+    const languageMenu = document.querySelector<HTMLDetailsElement>(
+      "[data-language-menu]",
+    );
+    if (languageMenu) languageMenu.open = false;
+    menu.panel.hidden = false;
+    menu.toggle.setAttribute("aria-expanded", "true");
+    positionMenu(menu);
+  }
+
+  menus.forEach((menu) => {
+    const links = Array.from(
+      menu.panel.querySelectorAll<HTMLAnchorElement>("a"),
+    );
+    menu.toggle.addEventListener("click", () => {
+      if (menu.panel.hidden) openMenu(menu);
+      else closeMenu(menu);
+    });
+    menu.toggle.addEventListener("keydown", (event) => {
+      if (event.key === "Tab" && !event.shiftKey && !menu.panel.hidden) {
+        event.preventDefault();
+        links[0]?.focus();
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      event.preventDefault();
+      openMenu(menu);
+      const link = event.key === "ArrowUp" ? links.at(-1) : links[0];
+      link?.focus();
+    });
+    menu.panel.addEventListener("keydown", (event) => {
+      const index = links.indexOf(document.activeElement as HTMLAnchorElement);
+      if (event.key === "Tab") {
+        if (event.shiftKey && index === 0) {
+          event.preventDefault();
+          menu.toggle.focus();
+        } else if (!event.shiftKey && index === links.length - 1) {
+          const nextLink = menu.toggle.nextElementSibling;
+          if (nextLink instanceof HTMLElement) {
+            event.preventDefault();
+            closeMenu(menu);
+            nextLink.focus();
+          }
+        }
+        return;
+      }
+      let nextIndex: number;
+      if (event.key === "ArrowDown") nextIndex = (index + 1) % links.length;
+      else if (event.key === "ArrowUp")
+        nextIndex = (index - 1 + links.length) % links.length;
+      else if (event.key === "Home") nextIndex = 0;
+      else if (event.key === "End") nextIndex = links.length - 1;
+      else return;
+      event.preventDefault();
+      links[nextIndex]?.focus();
+    });
+    menu.panel.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a"))
+        closeMenu(menu);
+    });
+    // The popup is outside this scrolling row so it cannot be clipped on mobile.
+    menu.scroller.addEventListener("scroll", () => {
+      if (!menu.panel.hidden)
+        closeMenu(menu, menu.panel.contains(document.activeElement));
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Node && !menu.root.contains(event.target))
+        closeMenu(menu);
+    });
+    document.addEventListener("focusin", (event) => {
+      if (
+        event.target instanceof Node &&
+        event.target !== menu.toggle &&
+        !menu.panel.contains(event.target)
+      )
+        closeMenu(menu);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || menu.panel.hidden) return;
+      event.preventDefault();
+      closeMenu(menu, true);
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    menus.forEach((menu) => {
+      if (menu.panel.hidden) return;
+      if (menu.root.getClientRects().length) positionMenu(menu);
+      else {
+        const restoreFocus = menu.root.contains(document.activeElement);
+        closeMenu(menu);
+        if (restoreFocus)
+          menus
+            .find((other) => other.root.getClientRects().length)
+            ?.toggle.focus({ preventScroll: true });
+      }
+    });
+  });
+</script>

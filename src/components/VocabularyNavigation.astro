@@ -1,0 +1,39 @@
+---
+import UiText from "./UiText.astro";
+
+interface Props {
+  id?: string;
+  dropdown?: boolean;
+}
+const { id, dropdown = false } = Astro.props;
+const pathname = Astro.url.pathname.replace(/\/?$/, "/");
+const links = [
+  { href: "/vocabulary/", zh: "单词记忆", en: "Word memory" },
+  {
+    href: "/vocabulary/conjugation/",
+    zh: "动词变位",
+    en: "Verb conjugation",
+  },
+];
+---
+
+<nav
+  id={id}
+  class={dropdown ? "vocabulary-options" : "vocabulary-navigation"}
+  hidden={dropdown}
+  data-ui-aria-label
+  data-zh="背单词练习方式"
+  data-en="Vocabulary practice"
+  aria-label="背单词练习方式"
+>
+  {
+    links.map((item) => (
+      <a
+        href={item.href}
+        aria-current={pathname === item.href ? "page" : undefined}
+      >
+        <UiText zh={item.zh} en={item.en} />
+      </a>
+    ))
+  }
+</nav>

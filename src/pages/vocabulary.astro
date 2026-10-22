@@ -1,16 +1,18 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import UiText from "../components/UiText.astro";
+import VocabularyNavigation from "../components/VocabularyNavigation.astro";
 ---
 
 <BaseLayout
-  title={{ zh: "背单词", en: "Vocabulary" }}
+  title={{ zh: "单词记忆", en: "Word memory" }}
   description={{
     zh: "创建个人单词卡片，按复习计划学习并同步学习进度。",
     en: "Create personal word cards, review them on a schedule, and sync your progress.",
   }}
 >
   <section class="page-intro vocabulary-intro">
+    <VocabularyNavigation />
     <p class="kicker"><UiText zh="每日练习" en="DAILY PRACTICE" /></p>
     <h1><UiText zh="把新词，变成熟悉。" en="Make new words familiar." /></h1>
     <p class="vocabulary-lead">
@@ -19,9 +21,6 @@ import UiText from "../components/UiText.astro";
         en="Add your own words and let your review schedule take shape."
       />
     </p>
-    <a class="vocabulary-quiet conjugation-entry" href="/vocabulary/conjugation/">
-      <UiText zh="法语动词变位 →" en="French conjugation →" />
-    </a>
   </section>
 
   <section class="vocabulary-panel" aria-labelledby="vocabulary-title">
@@ -129,19 +128,22 @@ import UiText from "../components/UiText.astro";
             <strong data-due-count>0</strong><span
               data-ui-text
               data-zh="待复习"
-              data-en="Due">待复习</span>
+              data-en="Due">待复习</span
+            >
           </div>
           <div>
             <strong data-new-count>0</strong><span
               data-ui-text
               data-zh="今日新词剩余"
-              data-en="New words left today">今日新词剩余</span>
+              data-en="New words left today">今日新词剩余</span
+            >
           </div>
           <div>
             <strong data-total-count>0</strong><span
               data-ui-text
               data-zh="词库总数"
-              data-en="Total words">词库总数</span>
+              data-en="Total words">词库总数</span
+            >
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import UiText from "../../components/UiText.astro";
+import VocabularyNavigation from "../../components/VocabularyNavigation.astro";
 import { tenses } from "../../lib/conjugation";
 ---
 
@@ -12,9 +13,7 @@ import { tenses } from "../../lib/conjugation";
   }}
 >
   <section class="page-intro vocabulary-intro conjugation-intro">
-    <a class="conjugation-back" href="/vocabulary/"
-      ><UiText zh="← 返回背单词" en="← Back to vocabulary" /></a
-    >
+    <VocabularyNavigation />
     <p class="kicker">
       <UiText zh="法语 · 每日练习" en="FRENCH · DAILY PRACTICE" />
     </p>
