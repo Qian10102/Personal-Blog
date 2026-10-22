@@ -1,5 +1,5 @@
 import { verbs } from "../data/french-verbs.ts";
-import { roundLength } from "./conjugation.ts";
+import { drawQuestions } from "./study-session.ts";
 
 export type MeaningAnswer =
   | { phase: "writing" }
@@ -23,11 +23,6 @@ export function rateMeaning(
   return { phase: "rated", answer: state.answer, correct };
 }
 
-export function createMeaningRound(random = Math.random) {
-  const pool = [...verbs];
-  for (let i = 0; i < roundLength; i++) {
-    const j = i + Math.floor(random() * (pool.length - i));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, roundLength).map((verb) => ({ verb }));
+export function createMeaningRound(random = Math.random, count = 10) {
+  return drawQuestions(verbs, count, random).map((verb) => ({ verb }));
 }

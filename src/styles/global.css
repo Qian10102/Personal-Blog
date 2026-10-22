@@ -456,6 +456,7 @@ html[data-theme="dark"] .theme-icon-dark {
   font-weight: 650;
 }
 .conjugation-setup select,
+.conjugation-setup input,
 .conjugation-answer-form input {
   width: 100%;
   min-width: 0;
@@ -1819,4 +1820,11 @@ button:active,
   .vocabulary-word-row {
     align-items: flex-start;
   }
+}
+
+.session-size,
+.session-size > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.5rem;
 }

@@ -7,13 +7,13 @@ import {
   checkAnswer,
   createRound,
   pronouns,
-  roundLength,
   summarizeProgress,
   tenses,
   type Mode,
   type Progress,
   type Question,
 } from "../lib/conjugation.ts";
+import { sessionSizeControl } from "../lib/session-size-control";
 import { verbs } from "../data/french-verbs.ts";
 import { verbMeanings } from "../data/french-verb-meanings.ts";
 import {
@@ -46,6 +46,7 @@ const input = el<HTMLInputElement>("#conjugation-answer");
 const next = el<HTMLButtonElement>("[data-next]");
 const setup = el<HTMLFormElement>("[data-setup]");
 const answerForm = el<HTMLFormElement>("[data-answer-form]");
+const sizeControl = sessionSizeControl(setup, () => kind);
 let client: SupabaseClient;
 let userId: string | null = null;
 let epoch = 0;
@@ -121,7 +122,7 @@ function renderStats() {
     stats.total.correct,
   );
   el("[data-round-score]").textContent = round.length
-    ? `${roundCorrect} / ${roundLength}`
+    ? `${roundCorrect} / ${round.length}`
     : "—";
   el("[data-tense-stats]").replaceChildren(
     ...(kind === "meaning"
@@ -160,8 +161,8 @@ function renderQuestion() {
   const meaning = kind === "meaning";
   const tense = tenses.find((item) => item.id === question.tense);
   el("[data-question-count]").textContent = text(
-    `第 ${index + 1} / ${roundLength} 题`,
-    `Question ${index + 1} of ${roundLength}`,
+    `第 ${index + 1} / ${round.length} 题`,
+    `Question ${index + 1} of ${round.length}`,
   );
   el("[data-question-tense]").textContent = meaning
     ? text("法语 → 中文", "French → Chinese")
@@ -180,6 +181,7 @@ function renderQuestion() {
         "Use être with masculine agreement; nous / vous / ils are plural. Movement verbs use their intransitive meaning.",
       )
     : "";
+  el<HTMLProgressElement>("[data-round-progress]").max = round.length;
   el<HTMLProgressElement>("[data-round-progress]").value =
     index + Number(answered);
   const revealed = meaning && meaningAnswer.phase !== "writing";
@@ -207,7 +209,7 @@ function renderQuestion() {
   if (answered) el("[data-feedback]").dataset.correct = String(verdict);
   else delete el("[data-feedback]").dataset.correct;
   next.textContent =
-    index === roundLength - 1
+    index === round.length - 1
       ? text("查看本轮结果", "See round results")
       : text("下一题", "Next question");
 }
@@ -381,6 +383,7 @@ function showSession(session: Session | null) {
     ? (readPending(id, "conjugation") ?? readPending(id, "meaning"))
     : null;
   if (pending) kind = pending.kind;
+  sizeControl.restore();
   retryStored = true;
   answered = false;
   index = 0;
@@ -404,16 +407,29 @@ function showSession(session: Session | null) {
 setup.addEventListener("submit", (event) => {
   event.preventDefault();
   if (!ready || pending || !userId) return;
+  const count = sizeControl.read();
+  if (!count) return;
   round =
     kind === "meaning"
-      ? createMeaningRound()
-      : createRound(el<HTMLSelectElement>("#tense-mode").value as Mode);
+      ? createMeaningRound(Math.random, count)
+      : createRound(
+          el<HTMLSelectElement>("#tense-mode").value as Mode,
+          Math.random,
+          count,
+        );
   index = 0;
   roundCorrect = 0;
   setup.hidden = true;
   el("[data-summary]").hidden = true;
   el("[data-question]").hidden = false;
-  say("", "");
+  say(
+    round.length < count
+      ? `当前可用 ${round.length} 题，本轮按实际数量练习。`
+      : "",
+    round.length < count
+      ? `Only ${round.length} questions are available; this round uses that number.`
+      : "",
+  );
   renderStats();
   renderMode();
   showQuestion();
@@ -508,6 +524,7 @@ document
       const selected = button.dataset.practiceKind as PracticeKind;
       if (selected === kind) return;
       kind = selected;
+      sizeControl.restore();
       pending = userId ? readPending(userId, kind) : null;
       round = [];
       rows = [];
@@ -528,12 +545,12 @@ document
 next.addEventListener("click", () => {
   if (!answered || pending || saving) return;
   index++;
-  if (index < roundLength) return showQuestion();
+  if (index < round.length) return showQuestion();
   el("[data-question]").hidden = true;
   el("[data-summary]").hidden = false;
   el("[data-summary-score]").textContent = text(
-    `${roundCorrect} / ${roundLength} 题答对`,
-    `${roundCorrect} of ${roundLength} correct`,
+    `${roundCorrect} / ${round.length} 题答对`,
+    `${roundCorrect} of ${round.length} correct`,
   );
   setup.hidden = false;
   renderMode();
@@ -619,10 +636,10 @@ document.addEventListener("ui-language-change", () => {
         ? "Couldn't load meaning progress. Retry or switch to conjugation."
         : "Couldn't load progress. Check your connection and database setup.",
     );
-  if (index === roundLength)
+  if (round.length > 0 && index === round.length)
     el("[data-summary-score]").textContent = text(
-      `${roundCorrect} / ${roundLength} 题答对`,
-      `${roundCorrect} of ${roundLength} correct`,
+      `${roundCorrect} / ${round.length} 题答对`,
+      `${roundCorrect} of ${round.length} correct`,
     );
 });
 

@@ -1,0 +1,29 @@
+---
+import UiText from "./UiText.astro";
+const { prefix } = Astro.props;
+---
+
+<div class="session-size" data-session-size>
+  <label for={`${prefix}-size`}><UiText zh="本轮数量" en="Round size" /></label>
+  <select id={`${prefix}-size`} data-size-preset>
+    {[10, 20, 30, 50].map((count) => <option value={count}>{count}</option>)}
+    <option value="custom" data-ui-text data-zh="自定义" data-en="Custom"
+      >自定义</option
+    >
+  </select>
+  <div data-custom-size hidden>
+    <label for={`${prefix}-custom-size`}
+      ><UiText zh="自定义数量" en="Custom count" /></label
+    >
+    <input
+      id={`${prefix}-custom-size`}
+      data-size-custom
+      type="number"
+      min="1"
+      step="1"
+      inputmode="numeric"
+      disabled
+      required
+    />
+  </div>
+</div>

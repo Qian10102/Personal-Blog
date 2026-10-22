@@ -1,3 +1,4 @@
+import { drawQuestions } from "./study-session.ts";
 import { verbs } from "../data/french-verbs.ts";
 
 export const tenses = [
@@ -64,7 +65,11 @@ export function checkAnswer(question: Question, answer: string): boolean {
     .some((variant) => normalizeAnswer(answer) === normalizeAnswer(variant));
 }
 
-export function createRound(mode: Mode, random = Math.random): Question[] {
+export function createRound(
+  mode: Mode,
+  random = Math.random,
+  count = roundLength,
+): Question[] {
   const pool: Question[] = [];
   for (const verb of verbs)
     for (const tense of tenses) {
@@ -72,12 +77,7 @@ export function createRound(mode: Mode, random = Math.random): Question[] {
       for (let person = 0; person < pronouns.length; person++)
         pool.push({ verb, tense: tense.id, person });
     }
-  // Partial Fisher–Yates: draw ten distinct questions without favoring a verb or person.
-  for (let i = 0; i < roundLength; i++) {
-    const j = i + Math.floor(random() * (pool.length - i));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, roundLength);
+  return drawQuestions(pool, count, random);
 }
 
 export function summarizeProgress(rows: Progress[]) {

@@ -2,14 +2,15 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import UiText from "../../components/UiText.astro";
 import VocabularyNavigation from "../../components/VocabularyNavigation.astro";
+import SessionSize from "../../components/SessionSize.astro";
 import { tenses } from "../../lib/conjugation";
 ---
 
 <BaseLayout
   title={{ zh: "法语动词变位", en: "French conjugation" }}
   description={{
-    zh: "100 个法语动词，练习六种时态或中文释义。每次十题，记录你的进步。",
-    en: "Practice conjugation or Chinese meanings for 100 French verbs, ten questions at a time.",
+    zh: "100 个法语动词，练习六种时态或中文释义。自选每轮数量，记录你的进步。",
+    en: "Practice conjugation or Chinese meanings for 100 French verbs, with a round size you choose.",
   }}
 >
   <section class="page-intro vocabulary-intro conjugation-intro">
@@ -20,8 +21,8 @@ import { tenses } from "../../lib/conjugation";
     <h1><UiText zh="让变位，成为习惯。" en="Find your French rhythm." /></h1>
     <p class="vocabulary-lead">
       <UiText
-        zh="100 个常用动词，练习变位或中文含义。每次十题，慢慢熟悉。"
-        en="100 common verbs. Practice conjugation or Chinese meanings, ten questions at a time."
+        zh="100 个常用动词，练习变位或中文含义。自选每轮数量，慢慢熟悉。"
+        en="100 common verbs. Practice conjugation or Chinese meanings, with a round size you choose."
       />
     </p>
   </section>
@@ -151,8 +152,9 @@ import { tenses } from "../../lib/conjugation";
               }
             </select>
           </div>
+          <SessionSize prefix="verb" />
           <button type="submit" class="vocabulary-primary"
-            ><UiText zh="开始 10 题练习" en="Start 10 questions" /></button
+            ><UiText zh="开始练习" en="Start practice" /></button
           >
         </form>
         <p class="conjugation-instructions" data-practice-instructions></p>
