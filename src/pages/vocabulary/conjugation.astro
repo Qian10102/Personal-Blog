@@ -10,8 +10,8 @@ import { tenses } from "../../lib/conjugation";
 <BaseLayout
   title={{ zh: "法语动词变位", en: "French conjugation" }}
   description={{
-    zh: "100 个法语动词，练习六种时态或中文释义。自选每轮数量，记录你的进步。",
-    en: "Practice conjugation or Chinese meanings for 100 French verbs, with a round size you choose.",
+    zh: "142 个法语动词（含 B2 论述专题），练习六种时态或中文释义。自选每轮数量，记录你的进步。",
+    en: "Practice conjugation or Chinese meanings for 142 French verbs, including a B2 argumentation collection, with a round size you choose.",
   }}
 >
   <section class="page-intro vocabulary-intro conjugation-intro">
@@ -22,8 +22,8 @@ import { tenses } from "../../lib/conjugation";
     <h1><UiText zh="让变位，成为习惯。" en="Find your French rhythm." /></h1>
     <p class="vocabulary-lead">
       <UiText
-        zh="100 个常用动词，练习变位或中文含义。自选每轮数量，慢慢熟悉。"
-        en="100 common verbs. Practice conjugation or Chinese meanings, with a round size you choose."
+        zh="142 个常用与 B2 专题动词，练习变位或中文含义。自选每轮数量，慢慢熟悉。"
+        en="142 common and B2 topic verbs. Practice conjugation or Chinese meanings, with a round size you choose."
       />
     </p>
   </section>
@@ -233,7 +233,7 @@ import { tenses } from "../../lib/conjugation";
                 class="vocabulary-quiet"
                 data-self-rating="false"
               >
-                <UiText zh="答错了" en="I got it wrong" />
+                <UiText zh="标错并重练" en="Mark wrong & retry" />
               </button>
               <button
                 type="button"
@@ -249,6 +249,24 @@ import { tenses } from "../../lib/conjugation";
             class="vocabulary-primary conjugation-next"
             data-next
             hidden></button>
+        </div>
+        <p class="vocabulary-muted">
+          <UiText
+            zh="错题会排到本轮末尾，直到答对；10 分钟后的复习安排仍保留。上一词可查看并重新评分，替换原结果。"
+            en="Wrong answers repeat at the end of this round until correct; the review in 10 minutes is retained. Use Previous word to view or replace an assessment."
+          />
+        </p>
+        <div class="practice-history">
+          <button
+            type="button"
+            class="vocabulary-quiet"
+            data-previous
+            disabled
+            hidden><UiText zh="上一词" en="Previous word" /></button
+          >
+          <button type="button" class="vocabulary-quiet" data-regrade hidden
+            ><UiText zh="重新评分" en="Change assessment" /></button
+          >
         </div>
         <div class="conjugation-summary" data-summary tabindex="-1" hidden>
           <p class="eyebrow"><UiText zh="本轮完成" en="ROUND COMPLETE" /></p>

@@ -1,3 +1,4 @@
+import { verbs } from "../src/data/french-verbs.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRound } from "../src/lib/conjugation.ts";
@@ -16,7 +17,7 @@ test("session sizes reject zero, fractions, nonfinite and unsafe values", () => 
 test("variable verb rounds clamp to their pools and contain distinct question units", () => {
   for (const count of [1, 7, 10, 20, 30, 50, 101, Number.MAX_SAFE_INTEGER]) {
     const meaning = createMeaningRound(() => 0.999999, count);
-    assert.equal(meaning.length, Math.min(count, 100));
+    assert.equal(meaning.length, Math.min(count, verbs.length));
     assert.equal(
       new Set(meaning.map((q) => q.verb.infinitive)).size,
       meaning.length,
@@ -25,7 +26,7 @@ test("variable verb rounds clamp to their pools and contain distinct question un
       const round = createRound(mode, () => 0.5, count);
       assert.equal(
         round.length,
-        Math.min(count, mode === "mixed" ? 3600 : 600),
+        Math.min(count, verbs.length * (mode === "mixed" ? 36 : 6)),
       );
       assert.equal(
         new Set(round.map((q) => `${q.verb.infinitive}:${q.tense}:${q.person}`))

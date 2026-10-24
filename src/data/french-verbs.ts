@@ -139,6 +139,46 @@ function irregular(
   );
 }
 
+// Reflexive answers include the object pronoun, but omit the subject and que.
+function reflexive(base: Verb, infinitive: string): Verb {
+  const result = structuredClone(base);
+  result.infinitive = infinitive;
+  result.auxiliary = "être";
+  const pronouns = ["me", "te", "se", "nous", "vous", "se"];
+  for (const tense of Object.keys(result.forms) as (keyof Verb["forms"])[]) {
+    result.forms[tense] = base.forms[tense].map((form, person) => {
+      if (tense === "passe-compose") {
+        const participle = form.split(" ").slice(1).join(" ");
+        form = `${six("suis es est sommes êtes sont")[person]} ${participle}${person >= 3 ? "s" : ""}`;
+      }
+      const pronoun =
+        person < 3 || person === 5
+          ? /^[aeiouyàâäéèêëîïôöùûüœ]/i.test(form)
+            ? pronouns[person].slice(0, -1) + "'"
+            : pronouns[person] + " "
+          : pronouns[person] + " ";
+      return pronoun + form;
+    }) as Six;
+  }
+  return result;
+}
+
+function expression(
+  base: Verb,
+  infinitive: string,
+  complement: string,
+  agreement = false,
+): Verb {
+  const result = structuredClone(base);
+  result.infinitive = infinitive;
+  for (const tense of Object.keys(result.forms) as (keyof Verb["forms"])[])
+    result.forms[tense] = base.forms[tense].map(
+      (form, person) =>
+        `${form} ${complement}${agreement && person >= 3 ? "s" : ""}`,
+    ) as Six;
+  return result;
+}
+
 export const verbs: Verb[] = [
   irregular(
     "être",
@@ -380,6 +420,102 @@ export const verbs: Verb[] = [
   ...["finir", "choisir", "réussir", "remplir"].map(ir),
   ...["entendre", "répondre", "attendre", "perdre", "vendre", "rendre"].map(re),
 ];
+
+// B2 argumentation and reported opinions: exact list membership is documented
+// in b2-verb-sources.ts and docs/reference/b2-verbs.md.
+verbs.push(
+  ...[
+    "estimer",
+    "réaffirmer",
+    "énoncer",
+    "revendiquer",
+    "illustrer",
+    "souligner",
+    "démontrer",
+    "préciser",
+    "clarifier",
+    "dénoncer",
+    "nier",
+    "invalider",
+    "dissuader",
+    "inciter",
+    "encourager",
+    "déclarer",
+    "insister",
+    "affirmer",
+    "ajouter",
+    "confier",
+    "déplorer",
+    "objecter",
+    "signaler",
+    "insinuer",
+    "prétexter",
+  ].map((verb) => er(verb)),
+  er("adhérer", "adhèr"),
+  er("rejeter", "rejett", "rejetter"),
+  ir("avertir"),
+  re("prétendre"),
+  irregular(
+    "soutenir",
+    "soutiens soutiens soutient soutenons soutenez soutiennent",
+    "soutenu",
+    "soutiendr",
+  ),
+  irregular(
+    "contredire",
+    "contredis contredis contredit contredisons contredisez contredisent",
+    "contredit",
+  ),
+  irregular(
+    "craindre",
+    "crains crains craint craignons craignez craignent",
+    "craint",
+  ),
+  irregular(
+    "reconnaître",
+    "reconnais reconnais reconnaît reconnaissons reconnaissez reconnaissent",
+    "reconnu",
+  ),
+  irregular(
+    "admettre",
+    "admets admets admet admettons admettez admettent",
+    "admis",
+  ),
+  irregular(
+    "prévenir",
+    "préviens préviens prévient prévenons prévenez préviennent",
+    "prévenu",
+    "préviendr",
+  ),
+  reflexive(er("prononcer"), "se prononcer"),
+  reflexive(er("étonner"), "s'étonner"),
+  reflexive(er("moquer"), "se moquer"),
+  reflexive(
+    irregular(
+      "plaindre",
+      "plains plains plaint plaignons plaignez plaignent",
+      "plaint",
+    ),
+    "se plaindre",
+  ),
+  expression(
+    verbs.find((verb) => verb.infinitive === "faire")!,
+    "faire remarquer",
+    "remarquer",
+  ),
+  expression(
+    verbs.find((verb) => verb.infinitive === "être")!,
+    "être persuadé",
+    "persuadé",
+    true,
+  ),
+  expression(
+    verbs.find((verb) => verb.infinitive === "être")!,
+    "être convaincu",
+    "convaincu",
+    true,
+  ),
+);
 
 // Both spellings are standard for -ayer verbs.
 for (const infinitive of ["payer", "essayer"]) {

@@ -1869,3 +1869,29 @@ button:active,
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+.practice-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-block: 1rem;
+}
+
+.vocabulary-rating button[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.practice-history button:disabled {
+  cursor: default;
+}
+
+@media (max-width: 480px) {
+  .vocabulary-rating > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vocabulary-rating button {
+    padding: 0.6rem;
+  }
+}

@@ -12,9 +12,9 @@ import {
 const verb = (name) => verbs.find((item) => item.infinitive === name);
 const forms = (name, tense) => verb(name).forms[tense];
 
-test("100 unique verbs each have all six tenses and all six persons", () => {
-  assert.equal(verbs.length, 100);
-  assert.equal(new Set(verbs.map((item) => item.infinitive)).size, 100);
+test("142 unique verbs each have all six tenses and all six persons", () => {
+  assert.equal(verbs.length, 142);
+  assert.equal(new Set(verbs.map((item) => item.infinitive)).size, 142);
   for (const item of verbs) {
     assert.equal(Object.keys(item.forms).length, 6);
     for (const tense of tenses) {
@@ -238,4 +238,31 @@ test("statistics aggregate across verbs and separate tenses without fabricating 
   assert.equal(stats.byTense.find((row) => row.id === "present").attempts, 5);
   assert.equal(stats.byTense.find((row) => row.id === "present").correct, 3);
   assert.equal(stats.byTense.find((row) => row.id === "imparfait").attempts, 0);
+});
+
+// Specific language traps independent of the inflection helpers.
+test("B2 irregulars, reflexives and opinion expressions retain their principal parts", () => {
+  assert.equal(forms("contredire", "present")[4], "contredisez");
+  assert.equal(forms("soutenir", "futur")[0], "soutiendrai");
+  assert.equal(forms("craindre", "subjonctif")[3], "craignions");
+  assert.equal(forms("admettre", "passe-compose")[0], "ai admis");
+  assert.equal(forms("prévenir", "subjonctif")[3], "prévenions");
+  assert.equal(forms("adhérer", "present")[0], "adhère");
+  assert.equal(forms("adhérer", "futur")[0], "adhérerai");
+  assert.equal(forms("rejeter", "futur")[0], "rejetterai");
+  assert.equal(forms("se prononcer", "present")[3], "nous prononçons");
+  assert.equal(forms("se prononcer", "imparfait")[0], "me prononçais");
+  assert.equal(
+    forms("se prononcer", "passe-compose")[3],
+    "nous sommes prononcés",
+  );
+  assert.equal(forms("s'étonner", "present")[0], "m'étonne");
+  assert.equal(forms("s'étonner", "passe-compose")[0], "me suis étonné");
+  assert.equal(forms("se plaindre", "subjonctif")[5], "se plaignent");
+  assert.equal(forms("se plaindre", "passe-compose")[5], "se sont plaints");
+  assert.equal(
+    forms("être persuadé", "passe-compose")[3],
+    "avons été persuadés",
+  );
+  assert.equal(forms("faire remarquer", "present")[4], "faites remarquer");
 });

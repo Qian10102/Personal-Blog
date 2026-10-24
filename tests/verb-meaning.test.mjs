@@ -1,3 +1,4 @@
+import { b2VerbNames } from "../src/data/b2-verb-sources.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { verbs } from "../src/data/french-verbs.ts";
@@ -8,7 +9,7 @@ import {
   rateMeaning,
 } from "../src/lib/verb-meaning.ts";
 
-test("Chinese meanings cover exactly the existing 100 verbs", () => {
+test("Chinese meanings cover all practice verbs", () => {
   assert.deepEqual(
     Object.keys(verbMeanings).sort(),
     verbs.map((v) => v.infinitive).sort(),
@@ -54,4 +55,15 @@ test("self-assessment is the sole verdict and cannot be counted or changed twice
   });
   assert.equal(rateMeaning(rated, true), rated);
   assert.equal(revealMeaning(rated, "其他答案"), rated);
+});
+
+test("the full selected B2 source union is available in both practice modes", () => {
+  assert.equal(b2VerbNames.length, 43);
+  for (const name of b2VerbNames) {
+    assert.ok(
+      verbs.some((v) => v.infinitive === name),
+      name,
+    );
+    assert.ok(verbMeanings[name]?.length, name);
+  }
 });

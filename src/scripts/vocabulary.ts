@@ -1,3 +1,4 @@
+import { PracticeRound } from "../lib/practice-round";
 import {
   type Mistake,
   dueMistakes,
@@ -48,7 +49,12 @@ const cancelEdit =
 const sessionSetup =
   document.querySelector<HTMLFormElement>("[data-word-setup]")!;
 const sizeControl = sessionSizeControl(sessionSetup, () => "word");
+const practiceRound = new PracticeRound<string>((id) => id);
 let sessionIds: string[] = [];
+function syncRound() {
+  sessionIds = practiceRound.entries.map((e) => e.value);
+  sessionIndex = practiceRound.cursor;
+}
 let sessionIndex = 0;
 let sessionStarted = false;
 let sessionRequested = 0;
@@ -65,6 +71,7 @@ type PendingReview = {
   cardId: string;
   rating: Rating;
   timezone: string;
+  correction?: { id: string; expectedRevision: number };
 };
 let pendingReview: PendingReview | null = null;
 let retryStored = true;
@@ -138,6 +145,10 @@ function text(zh: string, en: string) {
 
 function setBusy(value: boolean) {
   busy = value;
+  document.querySelector<HTMLButtonElement>("[data-word-previous]")!.disabled =
+    value || Boolean(pendingReview) || practiceRound.cursor === 0;
+  document.querySelector<HTMLButtonElement>("[data-word-next]")!.disabled =
+    value || Boolean(pendingReview);
   document
     .querySelectorAll<HTMLButtonElement>(
       "[data-word-form] button, [data-rating], [data-login-form] button, [data-word-setup] button",
@@ -223,7 +234,7 @@ function renderStudy() {
             : `本轮可练 ${sessionIds.length} 个：优先到期复习，新词受每日 30 个额度限制。`,
           sessionOnly
             ? `This round has ${sessionIds.length} due mistakes. Check the notebook for review times.`
-            : `This round has ${sessionIds.length} words: due reviews first, with up to 30 new words a day.`,
+            : `Available this round: ${sessionIds.length}. Due reviews first, with up to 30 new words a day.`,
         )
       : "";
   renderMistakeNotebook(
@@ -250,13 +261,13 @@ function renderStudy() {
 
   const studyCard = document.querySelector<HTMLElement>("[data-study-card]")!;
   const empty = document.querySelector<HTMLElement>("[data-study-empty]")!;
-  // Keep the chosen queue fixed; deleted future cards reduce the actual target.
-  sessionIds = [
-    ...sessionIds.slice(0, sessionIndex),
-    ...sessionIds
-      .slice(sessionIndex)
-      .filter((id) => cards.some((card) => card.id === id)),
-  ];
+  practiceRound.remove((id) => !cards.some((card) => card.id === id));
+  syncRound();
+  document.querySelector<HTMLElement>("[data-word-previous]")!.hidden =
+    !sessionStarted;
+  document.querySelector<HTMLElement>("[data-word-next]")!.hidden =
+    practiceRound.current?.correct === undefined;
+  setBusy(busy);
   activeCard =
     cards.find((card) => card.id === sessionIds[sessionIndex]) ?? null;
   const inRound = Boolean(activeCard && sessionStarted);
@@ -266,14 +277,14 @@ function renderStudy() {
   const summary = document.querySelector<HTMLElement>("[data-word-summary]")!;
   summary.hidden = !sessionStarted || inRound;
   summary.textContent = text(
-    `本轮完成 · ${sessionIndex} / ${sessionIds.length} 个，进度已同步。`,
-    `Round complete · ${sessionIndex} of ${sessionIds.length} words. Progress synced.`,
+    `本轮完成 · 共作答 ${practiceRound.completed} 次（含重练），进度已同步。`,
+    `Round complete · ${practiceRound.completed} answers, including retries. Progress synced.`,
   );
   document.querySelector<HTMLElement>("[data-session-progress]")!.textContent =
     inRound
       ? text(
-          `本轮 ${sessionIndex + 1} / ${sessionIds.length} 个 · 已完成 ${sessionIndex} 个`,
-          `Word ${sessionIndex + 1} of ${sessionIds.length} · ${sessionIndex} completed`,
+          `第 ${sessionIndex + 1} / ${sessionIds.length} 次 · 已答 ${practiceRound.completed} 次 · 待练 ${practiceRound.remaining} 次`,
+          `Card ${sessionIndex + 1} of ${sessionIds.length} · ${practiceRound.completed} answered · ${practiceRound.remaining} remaining`,
         )
       : "";
   if (!learnable && !inRound) {
@@ -308,10 +319,17 @@ function renderStudy() {
   const isNew = !activeCard.first_studied_at;
   document.querySelector<HTMLElement>("[data-card-label]")!.textContent = isNew
     ? text("今日新词", "NEW WORD")
-    : text(
-        `到期复习 · ${due.length} 个待复习`,
-        `DUE REVIEW · ${due.length} due`,
-      );
+    : practiceRound.current?.retry
+      ? text("本轮错词重练", "RETRY THIS ROUND")
+      : practiceRound.current?.correct !== undefined
+        ? text(
+            "已答词条 · 评分将替换原结果",
+            "ANSWERED CARD · RATING REPLACES ORIGINAL",
+          )
+        : text(
+            `到期复习 · ${due.length} 个待复习`,
+            `DUE REVIEW · ${due.length} due`,
+          );
   document.querySelector<HTMLElement>("[data-card-word]")!.textContent =
     activeCard.word;
   document.querySelector<HTMLElement>("[data-card-hint]")!.textContent = text(
@@ -324,9 +342,10 @@ function renderStudy() {
     activeCard.example ?? "";
   const card = document.querySelector<HTMLButtonElement>("[data-flashcard]")!;
   const wasRevealed =
-    card.dataset.cardId === activeCard.id &&
-    card.getAttribute("aria-expanded") === "true";
-  card.dataset.cardId = activeCard.id;
+    practiceRound.current?.correct !== undefined ||
+    (card.dataset.cardId === practiceRound.current?.id &&
+      card.getAttribute("aria-expanded") === "true");
+  card.dataset.cardId = practiceRound.current!.id;
   card.setAttribute("aria-expanded", String(wasRevealed));
   document.querySelector<HTMLElement>("[data-card-answer]")!.hidden =
     !wasRevealed;
@@ -340,6 +359,11 @@ function renderStudy() {
     .forEach((hint) => {
       const rating = hint.closest<HTMLButtonElement>("[data-rating]")!.dataset
         .rating as Rating;
+      const button = hint.closest<HTMLButtonElement>("[data-rating]")!;
+      button.setAttribute(
+        "aria-pressed",
+        String(practiceRound.current?.rating === rating),
+      );
       // Dynamic hints must not be overwritten by the global language renderer.
       hint.removeAttribute("data-ui-text");
       const outcome = mistake
@@ -347,7 +371,10 @@ function renderStudy() {
         : null;
       hint.textContent =
         rating === "again"
-          ? text("10 分钟", "10 min")
+          ? text(
+              "本轮重练 · 10 分钟后复习",
+              "Retry this round · review in 10 min",
+            )
           : outcome
             ? outcome.mastered_at
               ? text("完成后掌握", "Master after review")
@@ -479,8 +506,18 @@ async function deleteCard(card: WordCard) {
 
 async function submitRating(rating: Rating) {
   if (!supabase || !ownerId || !activeCard || busy || pendingReview) return;
+  const entry = practiceRound.current;
+  if (!entry) return;
   pendingReview = {
-    id: crypto.randomUUID(),
+    id: entry.id,
+    ...(entry.correct !== undefined
+      ? {
+          correction: {
+            id: crypto.randomUUID(),
+            expectedRevision: entry.revision,
+          },
+        }
+      : {}),
     cardId: activeCard.id,
     rating,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -501,18 +538,46 @@ async function syncWordPending() {
   const requestEpoch = epoch;
   setBusy(true);
   try {
-    const { data, error } = await supabase.rpc("record_practice_answer", {
-      p_attempt_id: attempt.id,
-      p_kind: "word",
-      p_correct: attempt.rating !== "again",
-      p_card_id: attempt.cardId,
-      p_rating: attempt.rating,
-      p_timezone: attempt.timezone,
-    });
+    const { data, error } = await supabase.rpc(
+      attempt.correction ? "replace_practice_answer" : "record_practice_answer",
+      attempt.correction
+        ? {
+            p_attempt_id: attempt.id,
+            p_revision_id: attempt.correction.id,
+            p_expected_revision: attempt.correction.expectedRevision,
+            p_correct: attempt.rating !== "again",
+            p_rating: attempt.rating,
+          }
+        : {
+            p_attempt_id: attempt.id,
+            p_kind: "word",
+            p_correct: attempt.rating !== "again",
+            p_card_id: attempt.cardId,
+            p_rating: attempt.rating,
+            p_timezone: attempt.timezone,
+          },
+    );
     if (requestEpoch !== epoch) return;
+    if (error?.code === "40001") {
+      clearPending();
+      practiceRound.start([]);
+      syncRound();
+      sessionStarted = false;
+      sessionRequested = 0;
+      await loadCards();
+      say(
+        "这条评分已在其他页面更新。已重新加载进度，请开始新一轮。",
+        "This assessment changed in another page. Progress reloaded; start a new round.",
+      );
+      return;
+    }
     if (error?.code === "23514") {
       clearPending();
-      sessionIds = sessionIds.slice(0, sessionIndex);
+      practiceRound.entries = practiceRound.entries.slice(
+        0,
+        practiceRound.cursor,
+      );
+      syncRound();
       renderStudy();
       say(
         "今日的新词额度已用完，本轮结束。已提交的进度已保留。",
@@ -530,7 +595,20 @@ async function syncWordPending() {
     );
     if (mistake) mistakes.push(mistake);
     clearPending();
-    if (sessionIds[sessionIndex] === attempt.cardId) sessionIndex++;
+    if (
+      practiceRound.settle(
+        attempt.id,
+        typeof data.correct === "boolean"
+          ? data.correct
+          : attempt.rating !== "again",
+        data.revision ?? 0,
+        undefined,
+        attempt.rating,
+      )
+    ) {
+      practiceRound.next();
+      syncRound();
+    }
     renderStudy();
     renderList();
     scheduleDueRefresh();
@@ -561,6 +639,19 @@ async function syncWordPending() {
   }
 }
 document
+  .querySelector("[data-word-previous]")!
+  .addEventListener("click", () => {
+    if (busy || pendingReview || !practiceRound.previous()) return;
+    syncRound();
+    renderStudy();
+    document.querySelector<HTMLButtonElement>("[data-flashcard]")!.focus();
+  });
+document.querySelector("[data-word-next]")!.addEventListener("click", () => {
+  if (busy || pendingReview || !practiceRound.next()) return;
+  syncRound();
+  renderStudy();
+});
+document
   .querySelector("[data-word-retry]")!
   .addEventListener("click", () => void syncWordPending());
 
@@ -582,13 +673,14 @@ sessionSetup.addEventListener("submit", async (event) => {
     const pool = only
       ? []
       : createWordSession(cards, count, Date.now(), localDateKey());
-    sessionIds = prioritizeQuestions(
+    const selected = prioritizeQuestions(
       priority,
       pool,
       count,
       (card) => card.id,
     ).map((card) => card.id);
-    sessionIndex = 0;
+    practiceRound.start(selected);
+    syncRound();
     sessionStarted = sessionIds.length > 0;
     sessionRequested = count;
     sessionOnly = only;
@@ -727,8 +819,8 @@ if (!url || !anonKey) {
     sessionKnown = true;
     epoch++;
     ownerId = nextOwner;
-    sessionIds = [];
-    sessionIndex = 0;
+    practiceRound.start([]);
+    syncRound();
     sessionStarted = false;
     sessionRequested = 0;
     activeCard = null;

@@ -190,7 +190,10 @@ import VocabularyNavigation from "../components/VocabularyNavigation.astro";
             </p>
             <div>
               <button type="button" data-rating="again"
-                ><span data-ui-text data-zh="忘记" data-en="Again">忘记</span
+                ><span
+                  data-ui-text
+                  data-zh="标错并重练"
+                  data-en="Mark wrong & retry">标错并重练</span
                 ><small data-ui-text data-zh="10 分钟" data-en="10 min"
                   >10 分钟</small
                 ></button
@@ -211,6 +214,24 @@ import VocabularyNavigation from "../components/VocabularyNavigation.astro";
             </div>
           </div>
         </div>
+        <div class="practice-history">
+          <button
+            type="button"
+            class="vocabulary-quiet"
+            data-word-previous
+            disabled
+            hidden><UiText zh="上一词" en="Previous word" /></button
+          >
+          <button type="button" class="vocabulary-quiet" data-word-next hidden
+            ><UiText zh="继续本轮" en="Continue round" /></button
+          >
+        </div>
+        <p class="vocabulary-muted">
+          <UiText
+            zh="标错后会在本轮末尾重练，直到答对；同时保留 10 分钟后的复习安排。返回上一词可替换评分，不增加作答次数。"
+            en="Wrong words repeat at the end of this round until correct. A review is also scheduled in 10 minutes. Return to a previous word to replace its rating without adding an attempt."
+          />
+        </p>
         <div class="vocabulary-empty" data-study-empty hidden>
           <strong data-empty-title></strong>
           <p data-empty-copy></p>

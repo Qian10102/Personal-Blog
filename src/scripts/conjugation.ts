@@ -1,3 +1,4 @@
+import { PracticeRound } from "../lib/practice-round";
 import {
   createClient,
   type SupabaseClient,
@@ -43,6 +44,7 @@ type Pending = {
   tense?: Progress["tense"];
   correct: boolean;
   version?: 2;
+  correction?: { id: string; expectedRevision: number };
   person?: number;
 };
 const allowedEmail = "qianzihanduo@gmail.com";
@@ -62,7 +64,15 @@ let kind: PracticeKind = "conjugation";
 let rows: PracticeProgress[] = [];
 let mistakes: Mistake[] = [];
 let starting = false;
+const practiceRound = new PracticeRound<PracticeQuestion>(
+  (q) => `${q.verb.infinitive}:${q.tense ?? "meaning"}:${q.person ?? ""}`,
+);
 let round: PracticeQuestion[] = [];
+function syncRound() {
+  round = practiceRound.entries.map((e) => e.value);
+  index = practiceRound.cursor;
+  roundCorrect = practiceRound.correct;
+}
 let meaningAnswer: MeaningAnswer = { phase: "writing" };
 let composing = false;
 let index = 0;
@@ -112,8 +122,8 @@ function renderMode() {
         "Write a Chinese meaning for the French verb, reveal the answer, then assess yourself. Any listed common sense is enough. Switch modes after the round.",
       )
     : text(
-        "只输入变位形式，不含主语或 que；复合过去时包含助动词。大小写、空格和重音差异均不影响判定。完成本轮后可切换模式。",
-        "Enter only the verb form, without the subject or que. Include the auxiliary for the compound past. Case, spaces and accents do not affect grading. Switch modes after the round.",
+        "只输入变位形式，不含主语或 que；代词式保留自反代词（如 me prononce），复合过去时包含助动词。大小写、空格和重音差异均不影响判定。完成本轮后可切换模式。",
+        "Enter only the verb form, without the subject or que. Include reflexive pronouns (e.g. me prononce) and the auxiliary for the compound past. Case, spaces and accents do not affect grading. Switch modes after the round.",
       );
   renderMistakeNotebook(
     el("[data-mistake-panel]"),
@@ -193,11 +203,13 @@ function renderQuestion() {
   el("[data-person]").hidden = meaning;
   el("[data-agreement]").hidden = meaning;
   const needsAgreement =
-    question.tense === "passe-compose" && question.verb.auxiliary === "être";
+    (question.tense === "passe-compose" &&
+      question.verb.auxiliary === "être") ||
+    question.verb.infinitive.startsWith("être ");
   el("[data-agreement]").textContent = needsAgreement
     ? text(
-        "此题用 être；主语按阳性处理，nous / vous / ils 按复数处理。表示移动的动词按不及物用法。",
-        "Use être with masculine agreement; nous / vous / ils are plural. Movement verbs use their intransitive meaning.",
+        "主语按阳性处理，nous / vous / ils 按复数处理。代词式须保留自反代词；移动动词按不及物用法。",
+        "Use masculine agreement; nous / vous / ils are plural. Include reflexive pronouns; movement verbs use their intransitive meaning.",
       )
     : "";
   el<HTMLProgressElement>("[data-round-progress]").max = round.length;
@@ -238,22 +250,36 @@ function renderSync() {
   el("[data-sync-message]").textContent = text(...syncMessage);
   el<HTMLButtonElement>("[data-retry]").hidden = saving || !pending;
   next.disabled = saving || Boolean(pending);
+  el<HTMLButtonElement>("[data-previous]").disabled =
+    saving || Boolean(pending) || practiceRound.cursor === 0;
+  el("[data-previous]").hidden = !practiceRound.entries.length;
+  el<HTMLButtonElement>("[data-regrade]").disabled = saving || Boolean(pending);
+  el("[data-regrade]").hidden = !answered || !practiceRound.current;
   setup.querySelector<HTMLButtonElement>("button")!.disabled =
     !ready || starting || Boolean(pending);
   renderMode();
 }
 
 function showQuestion() {
-  answered = false;
-  meaningAnswer = { phase: "writing" };
+  const entry = practiceRound.current;
+  answered = entry?.correct !== undefined;
+  verdict = entry?.correct ?? false;
+  meaningAnswer = answered
+    ? { phase: "rated", answer: entry?.answer ?? "", correct: verdict }
+    : { phase: "writing" };
   composing = false;
-  input.value = "";
-  input.disabled = false;
-  el<HTMLButtonElement>("[data-check]").disabled = false;
-  el("[data-feedback]").hidden = true;
-  next.hidden = true;
+  input.value = entry?.answer ?? "";
+  input.disabled = answered;
+  el<HTMLButtonElement>("[data-check]").disabled = answered;
+  el("[data-feedback]").hidden = !answered;
+  next.hidden = !answered;
+  el("[data-question]").hidden = false;
+  el("[data-summary]").hidden = true;
+  setup.hidden = true;
   renderQuestion();
-  input.focus();
+  renderSync();
+  if (answered) next.focus();
+  else input.focus();
 }
 
 function readPending(id: string, practice: PracticeKind): Pending | null {
@@ -292,36 +318,85 @@ async function syncPending() {
   renderSync();
   try {
     const { data, error } = await client.rpc(
-      attempt.version === 2
-        ? "record_practice_answer"
-        : attempt.kind === "meaning"
-          ? "record_verb_meaning_answer"
-          : "record_conjugation_answer",
-      {
-        p_attempt_id: attempt.id,
-        p_verb: attempt.verb,
-        ...(attempt.kind === "conjugation" ? { p_tense: attempt.tense } : {}),
-        p_correct: attempt.correct,
-        ...(attempt.version === 2
-          ? {
-              p_kind: attempt.kind,
-              ...(attempt.kind === "conjugation"
-                ? { p_person: attempt.person }
-                : {}),
-            }
-          : {}),
-      },
+      attempt.correction
+        ? "replace_practice_answer"
+        : attempt.version === 2
+          ? "record_practice_answer"
+          : attempt.kind === "meaning"
+            ? "record_verb_meaning_answer"
+            : "record_conjugation_answer",
+      attempt.correction
+        ? {
+            p_attempt_id: attempt.id,
+            p_revision_id: attempt.correction.id,
+            p_expected_revision: attempt.correction.expectedRevision,
+            p_correct: attempt.correct,
+          }
+        : {
+            p_attempt_id: attempt.id,
+            p_verb: attempt.verb,
+            ...(attempt.kind === "conjugation"
+              ? { p_tense: attempt.tense }
+              : {}),
+            p_correct: attempt.correct,
+            ...(attempt.version === 2
+              ? {
+                  p_kind: attempt.kind,
+                  ...(attempt.kind === "conjugation"
+                    ? { p_person: attempt.person }
+                    : {}),
+                }
+              : {}),
+          },
     );
     if (requestEpoch !== epoch) return;
     const updated = (attempt.version === 2 ? data?.progress : data?.[0]) as
       PracticeProgress | undefined;
-    if (error || !updated) throw error ?? new Error("Missing progress");
-    if (attempt.version === 2 && data.mistake) {
-      mistakes = mistakes.filter(
-        (m) =>
-          m.kind !== data.mistake.kind || m.item_key !== data.mistake.item_key,
+    if (error?.code === "40001") {
+      pending = null;
+      try {
+        sessionStorage.removeItem(pendingKey(owner, attempt.kind));
+      } catch {
+        /* Optional storage. */
+      }
+      practiceRound.start([]);
+      syncRound();
+      answered = false;
+      saving = false;
+      el("[data-question]").hidden = true;
+      el("[data-summary]").hidden = true;
+      setup.hidden = false;
+      await loadProgress();
+      say(
+        "这条评分已在其他页面更新。已重新加载进度，请开始新一轮。",
+        "This assessment changed in another page. Progress reloaded; start a new round.",
       );
-      mistakes.push(data.mistake);
+      return;
+    }
+    if (error || !updated) throw error ?? new Error("Missing progress");
+    if (attempt.version === 2) {
+      const itemKey =
+        attempt.kind === "meaning"
+          ? attempt.verb
+          : `${attempt.verb}:${attempt.tense}:${attempt.person}`;
+      mistakes = mistakes.filter(
+        (m) => m.kind !== attempt.kind || m.item_key !== itemKey,
+      );
+      if (data.mistake) mistakes.push(data.mistake);
+      const savedCorrect =
+        typeof data.correct === "boolean" ? data.correct : attempt.correct;
+      practiceRound.settle(attempt.id, savedCorrect, data.revision ?? 0);
+      if (practiceRound.current?.id === attempt.id) {
+        verdict = savedCorrect;
+        if (kind === "meaning")
+          meaningAnswer = {
+            phase: "rated",
+            answer: input.value,
+            correct: verdict,
+          };
+      }
+      syncRound();
+      renderQuestion();
     }
     rows = rows.filter(
       (row) => row.verb !== updated.verb || row.tense !== updated.tense,
@@ -438,7 +513,8 @@ function showSession(session: Session | null) {
   saving = false;
   rows = [];
   mistakes = [];
-  round = [];
+  practiceRound.start([]);
+  syncRound();
   pending = id
     ? (readPending(id, "conjugation") ?? readPending(id, "meaning"))
     : null;
@@ -518,9 +594,8 @@ setup.addEventListener("submit", async (event) => {
       );
       return;
     }
-    round = selectedRound;
-    index = 0;
-    roundCorrect = 0;
+    practiceRound.start(selectedRound);
+    syncRound();
     setup.hidden = true;
     el("[data-summary]").hidden = true;
     el("[data-question]").hidden = false;
@@ -586,14 +661,23 @@ function recordAnswer(correct: boolean) {
   if (answered || pending || !userId || !ready || !round[index]) return;
   answered = true;
   verdict = correct;
-  if (verdict) roundCorrect++;
   input.disabled = true;
   el<HTMLButtonElement>("[data-check]").disabled = true;
   el("[data-feedback]").hidden = false;
   el("[data-feedback]").dataset.correct = String(verdict);
   next.hidden = false;
+  const entry = practiceRound.current!;
+  entry.answer = input.value;
   pending = {
-    id: crypto.randomUUID(),
+    id: entry.id,
+    ...(entry.correct !== undefined
+      ? {
+          correction: {
+            id: crypto.randomUUID(),
+            expectedRevision: entry.revision,
+          },
+        }
+      : {}),
     verb: round[index].verb.infinitive,
     kind,
     version: 2,
@@ -640,7 +724,8 @@ document
       kind = selected;
       sizeControl.restore();
       pending = userId ? readPending(userId, kind) : null;
-      round = [];
+      practiceRound.start([]);
+      syncRound();
       rows = [];
       index = 0;
       roundCorrect = 0;
@@ -658,7 +743,8 @@ document
 
 next.addEventListener("click", () => {
   if (!answered || pending || saving) return;
-  index++;
+  practiceRound.next();
+  syncRound();
   if (index < round.length) return showQuestion();
   el("[data-question]").hidden = true;
   el("[data-summary]").hidden = false;
@@ -668,7 +754,27 @@ next.addEventListener("click", () => {
   );
   setup.hidden = false;
   renderMode();
+  renderSync();
   el("[data-summary]").focus();
+});
+el("[data-previous]").addEventListener("click", () => {
+  if (saving || pending || !ready) return;
+  if (practiceRound.current?.correct === undefined && practiceRound.current)
+    practiceRound.current.answer = input.value;
+  if (!practiceRound.previous()) return;
+  syncRound();
+  showQuestion();
+});
+el("[data-regrade]").addEventListener("click", () => {
+  if (saving || pending || !answered) return;
+  answered = false;
+  meaningAnswer = { phase: "writing" };
+  input.disabled = false;
+  el<HTMLButtonElement>("[data-check]").disabled = false;
+  next.hidden = true;
+  renderQuestion();
+  renderSync();
+  input.focus();
 });
 el("[data-retry]").addEventListener("click", () => void syncPending());
 el("[data-reload]").addEventListener("click", () => void loadProgress());
