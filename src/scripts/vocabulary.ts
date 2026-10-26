@@ -9,6 +9,7 @@ import {
 import { renderMistakeNotebook } from "../lib/mistake-notebook";
 import { createWordSession } from "../lib/study-session";
 import { sessionSizeControl } from "../lib/session-size-control";
+import { loadAllRows } from "../lib/load-all-rows";
 import {
   createClient,
   type SupabaseClient,
@@ -464,19 +465,31 @@ function resetForm() {
 async function loadCards() {
   if (!supabase || !ownerId) return;
   const requestEpoch = epoch;
-  const [cardResult, mistakeResult] = await Promise.all([
-    supabase
-      .from("vocabulary_cards")
-      .select("*")
-      .eq("user_id", ownerId)
-      .order("created_at", { ascending: true }),
-    supabase.from("vocabulary_mistakes").select("*").eq("user_id", ownerId),
+  const client = supabase;
+  const userId = ownerId;
+  const [loadedCards, loadedMistakes] = await Promise.all([
+    loadAllRows<WordCard>((from, to) =>
+      client
+        .from("vocabulary_cards")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    loadAllRows<Mistake>((from, to) =>
+      client
+        .from("vocabulary_mistakes")
+        .select("*")
+        .eq("user_id", userId)
+        .order("kind", { ascending: true })
+        .order("item_key", { ascending: true })
+        .range(from, to),
+    ),
   ]);
   if (requestEpoch !== epoch) return;
-  if (cardResult.error || mistakeResult.error)
-    throw cardResult.error ?? mistakeResult.error;
-  cards = (cardResult.data ?? []) as WordCard[];
-  mistakes = (mistakeResult.data ?? []) as Mistake[];
+  cards = loadedCards;
+  mistakes = loadedMistakes;
   renderStudy();
   renderList();
   scheduleDueRefresh();

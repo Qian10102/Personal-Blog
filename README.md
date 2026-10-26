@@ -20,6 +20,8 @@ npm run dev
 3. 配置邮件 SMTP，并将生产站点的 URL 添加为 Auth Site URL 和允许的重定向地址；两个页面的回调地址 `/vocabulary/` 和 `/vocabulary/conjugation/` 均需加入允许列表。本地开发时对应添加 `http://localhost:4321/vocabulary/` 和 `http://localhost:4321/vocabulary/conjugation/`。
 4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。若使用 GitHub Actions 发布，在仓库 Settings > Secrets and variables > Actions 中添加 `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 两个 Repository secrets；工作流会把它们传给构建步骤。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
 
+单词记忆页按稳定顺序分批加载词库和错题，直到读取完所有记录，避免接口默认行数上限截断大词库。任意一批加载失败都会显示加载失败，不会用不完整的数据开始练习。`tests/load-all-rows.test.mjs` 覆盖 2,970 个词条、较低的服务端上限、整页边界和中途失败。
+
 ## 法语动词变位
 
 全站“背单词”菜单点击后并列显示“单词记忆”（`/vocabulary/`）和“动词变位”（`/vocabulary/conjugation/`），桌面和手机均可使用；两个学习页顶部也提供同级切换。动词变位沿用词库登录会话。内置 142 个动词（原 100 个常用动词加 B2 论述专题），覆盖直陈式现在时、复合过去时、未完成过去时、简单将来时、现在条件式、现在虚拟式。默认混合练习，也可选择单一时态；每轮默认 10 题，可选择 10、20、30、50 或自定义正整数；按不重复的动词／时态／人称组合计数，同一动词可出现不同组合。
