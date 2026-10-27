@@ -5,5 +5,5 @@ dist/
 *.log
 github-profile/
 
-#macOS system file filter
-.DS_Store/
+# macOS metadata in every directory
+.DS_Store

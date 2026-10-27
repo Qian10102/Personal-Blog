@@ -1,0 +1,21 @@
+{
+  "rows": 2970,
+  "examples": 2970,
+  "sourced_examples": 2462,
+  "authored_or_rewritten_examples": 508,
+  "spelling_normalizations": [
+    {
+      "from": "chef-d'oeuvre",
+      "to": "chef-d'œuvre"
+    },
+    {
+      "from": "hors-d'oeuvre",
+      "to": "hors-d'œuvre"
+    },
+    {
+      "from": "Observateur",
+      "to": "observateur"
+    }
+  ],
+  "sha256": "a7f11c2b54c582b520635dced67b18becd0dcf03474edb9b3d38cf45d820cf69"
+}
