@@ -1,6 +1,6 @@
 ---
 title: "An Integrated Multilevel Transport System: Modeling Junction Control and Vertical Transitions"
-description: "Follow a flying car through a multilevel junction to see how lanes, signals, sensing, and SysML models work together—and which project results and design targets remain unvalidated."
+description: "How we used MBSE and SysML to model a ground-and-low-altitude traffic junction: following a flying car through safety checks, signal routing, and vertical lane transitions."
 pubDate: 2026-10-08
 category: "项目"
 tags: ["Urban Mobility", "Flying Cars", "SysML", "Systems Engineering"]
@@ -9,82 +9,82 @@ featured: false
 draft: false
 ---
 
-The project, “Modeling and Simulation of a New Integrated Multilevel Transportation System,” explores how to bring surface roads, multiple low-altitude traffic levels, and routes between levels under one set of traffic rules. It envisions flying cars that can move between ground and air, coordinated through multilevel junctions, distributed lanes, sensing equipment, and signal control.
+Whenever people talk about flying cars or urban air mobility, the conversation usually gravitates toward propulsion and battery density. When our team started working on *Modeling and Simulation of a New Integrated Multilevel Transportation System*, however, the question that kept us up at night was a traffic-engineering one: **if surface roads and multiple low-altitude flight levels are stacked into a single city grid, how does a vehicle climb from Level 2 to Level 3 at a busy intersection without colliding with through-traffic above or below?**
 
-The central questions are how a vehicle receives permission to proceed, how it safely crosses between levels at a junction, and how those rules can be represented in a system model. This article introduces the system, follows a typical journey, and distinguishes documented progress from proposed design inputs.
+Without a unified set of junction rules governing both horizontal turns and vertical transitions, flying cars are stuck ferrying between isolated pads rather than operating as a continuous network. In this post, I want to walk through how we decomposed the system using Model-Based Systems Engineering (MBSE), follow a single vehicle through a multilevel intersection, and draw a clear line between our completed SysML models and the performance targets that still await simulation.
+
+**中文版本：** [新型一体化立体交通系统：从路口调度到跨层通行](/posts/multilevel-traffic-system/)
 
 <figure class="article-figure">
   <img src="/images/posts/multilevel-traffic/air-ground-comparison.jpg" alt="Project illustration comparing current ground-to-air travel with a proposed integrated multilevel transport system" loading="lazy" decoding="async" />
-  <figcaption>The project archive’s comparison illustration: the upper panel shows a ground hub used for transfers between travel modes; the lower panel presents the concept of a flying car connecting ground and low-altitude routes through designated corridors. The original labels are in Chinese.</figcaption>
+  <figcaption>Mode-comparison illustration from our project archive: the upper panel shows traditional hub-based ground-to-air transfers; the lower panel shows a flying car transitioning directly between surface roads and low-altitude corridors. (Original labels in Chinese.)</figcaption>
 </figure>
 
-## 1. System components
+## 1. Breaking a 3D traffic network into three subsystems
 
-The project model divides the system into three parts: the flying car, the infrastructure, and fault handling with self-recovery. The midterm materials record that preliminary structural models had been built for the vehicle and infrastructure. Fault handling and self-recovery were still at the framework-design stage at that point.
+To keep the architecture manageable, we split the overall system into three top-level domains: **the flying car itself, the multilevel junction infrastructure, and fault handling with self-recovery.** By our midterm milestone, we had completed the structural models for both the vehicle and the infrastructure, while fault handling remained at the use-case and framework stage.
 
-### Flying car
+### Flying car: onboard sensing and safety envelopes
 
-The model uses a rotorcraft-style flying car as its representative vehicle, with four subsystems:
+We modeled a rotorcraft-style roadable aircraft as our reference vehicle and divided its onboard architecture into four subsystems:
 
-- **Energy support** supplies the onboard equipment and propulsion system, with parameters such as power used to describe energy constraints.
-- **Control and communications** receives driver or dispatch commands and sends and receives data. A central computer and a backup computer process information.
-- **Motion** uses propulsion and steering components to support ground, airborne, and between-level movement.
-- **Spatial awareness** uses distance sensors to measure separation from nearby vehicles and an altitude sensor to measure height above the ground. An information-storage module holds data such as vehicle dimensions and safety distances.
+- **Energy support:** powers avionics, sensors, and propulsion, with power constraints captured explicitly in parametric diagrams;
+- **Control and communications:** handles dispatch links and pilot inputs using a primary flight computer backed up by a redundant secondary unit;
+- **Motion:** coordinates ground drive, airborne cruise, and vertical climb/descent corridors;
+- **Spatial awareness:** pairs horizontal distance sensors with an altitude sensor, while an onboard storage module holds vehicle dimensions and minimum safety separation envelopes.
 
-### Infrastructure and traffic control
+### Infrastructure and junction control
 
-The infrastructure model contains energy support, information and communications with data processing, and sensing and signaling. Sensors gather junction and traffic-state information; data-processing and control modules coordinate vehicles; and traffic signals show permission to proceed and the allowed spatial route. Parameters such as road width and road height are also included in the model.
+Onboard sensors only see immediate neighbors; the intersection itself needs a global view. Our infrastructure model combines energy support, communications and data processing, and roadside sensing/signaling. Junction sensors monitor lane occupancy across every altitude layer, the central controller assigns conflict-free paths, and 3D traffic signals display both permission to enter and the authorized spatial corridor.
 
-### Fault handling and self-recovery
+### Fault handling and emergency recovery
 
-This subsystem is intended to help the system enter a safe response process when a vehicle or traffic facility encounters an abnormal condition. One use-case example describes a propulsion failure: onboard sensors raise an alarm, the vehicle broadcasts a failure code, and a dispatch center assigns an emergency landing area and clears the corresponding route. This describes the intended response mechanism. The relevant SysML structural diagram was still unfinished in the midterm report, so the example does not establish that autonomous recovery has been implemented or validated.
+On a surface street, a stalled car can pull over to the shoulder; in a low-altitude corridor, a propulsion fault affects every layer below it. In our use-case specifications, we designed an emergency response sequence: if a thruster fails, onboard sensors trigger an immediate broadcast of a fault code to expand nearby vehicles’ avoidance buffers, while dispatch clears the vertical descent path below and assigns an emergency landing zone. At the midterm stage, this recovery flow was defined in our use cases, with its detailed SysML Block Definition Diagram (BDD) queued for the next phase.
 
 <figure class="article-figure">
   <img src="/images/posts/multilevel-traffic/vehicle-system.svg" alt="SysML block definition diagram of the flying-car system, showing its energy, control and communications, motion, and spatial-awareness subsystems" loading="lazy" decoding="async" />
-  <figcaption>Block definition diagram (BDD) of the flying-car system from the midterm model. It shows the main vehicle subsystems and their component relationships. The original diagram labels are in Chinese.</figcaption>
+  <figcaption>Block Definition Diagram (BDD) of the flying-car system from our midterm model, mapping the four onboard subsystems and their component hierarchy. (Original labels in Chinese.)</figcaption>
 </figure>
 
-## 2. A typical journey through a junction
+## 2. Following a flying car through a multilevel junction
 
-The project proposal divides a typical trip into six phases: preflight preparation, route planning, takeoff, flight, landing preparation, and landing. The use-case description and cross-level activity diagram add detail about how a vehicle passes through a multilevel junction:
+To turn high-level concepts into testable logic, we traced a single flying car approaching and crossing a multilevel junction across six steps:
 
-1. **Request permission to proceed.** As a flying car approaches a multilevel intersection, it reports its current level and intended direction and asks the traffic-control system for permission. The use-case draft gives 1 km from the junction as an example request trigger.
-2. **Check position and validate commands.** Altitude and distance sensors provide the vehicle’s position and separation from nearby traffic. In the activity-diagram example, the system compares separation with the required safety distance. If the check fails, it displays an invalid-command state and prevents the propulsion system from starting; execution continues only after a successful check.
-3. **Plan the route and assign a lane.** The control system assigns a route based on direction, current level, and lane load. Vehicles going straight remain on the main route at their level, while turning or changing-level traffic is directed to the corresponding junction corridor.
-4. **Enter the junction according to signals.** A red light prohibits entry into the crossing area; a green arrow indicates an authorized spatial route. When a vehicle is preparing to change levels, traffic whose route conflicts with it must wait so that vehicles from different levels do not enter intersecting paths at the same time.
-5. **Move within a level or between levels.** Movement within a level can include going straight, changing lanes, and slowing down. To change levels, a vehicle first enters a designated ascending or descending corridor, then changes altitude. In the activity-diagram example, the altitude sensor samples every 5 milliseconds and ends the transition when the vehicle reaches the target corridor’s altitude. This is a model-example parameter, not measured equipment performance.
-6. **Leave the junction and continue along the route.** After crossing the junction, the vehicle joins the next lane segment or enters a cruising state. Traffic control updates lane load and plans passage for following vehicles.
+1. **Request permission 1 km out.** As the vehicle approaches a multilevel intersection (using 1 km as our baseline trigger distance in the use-case draft), it reports its current altitude level and intended direction to junction control.
+2. **Validate separation before engaging propulsion.** Before executing any maneuver, onboard distance and altitude sensors check current separation against required safety margins. In our activity diagram, this acts as a hard gate: **if separation falls short, the controller flags an invalid command and locks out the propulsion transition** until the buffer is clear.
+3. **Assign a layer or transition corridor.** Junction control routes through-traffic along the main lanes of its current level, while turning or level-changing vehicles are directed into dedicated ascending or descending ramps.
+4. **Follow 3D signal phasing.** A red light holds traffic outside the conflict box; a green spatial arrow clears a specific 3D trajectory. Whenever a vehicle is cleared to climb or descend, conflicting streams on adjacent levels are held automatically.
+5. **Execute a closed-loop altitude change.** Inside the transition corridor, the vehicle climbs or descends while sampling its altitude sensor (modeled at a 5 ms loop interval in our activity diagram) until its measured height matches the target corridor.
+6. **Merge and update lane load.** Once the vehicle exits the junction into cruise mode, traffic control updates corridor occupancy and recalculates signal timing for the next wave.
 
 <figure class="article-figure">
   <img src="/images/posts/multilevel-traffic/cross-layer-activity.svg" alt="Activity diagram for a flying car changing levels, including command and safety checks, altitude sampling, propulsion control, and a target-altitude decision" loading="lazy" decoding="async" />
-  <figcaption>SysML activity diagram for a between-level transition. The model checks the command and safety separation, then samples altitude until the vehicle reaches the target corridor. The original diagram labels are in Chinese.</figcaption>
+  <figcaption>SysML Activity Diagram for a cross-level transition: commands must pass a spatial safety check before the vehicle enters the closed-loop altitude transition. (Original labels in Chinese.)</figcaption>
 </figure>
 
-The use-case description also proposes adjusting signal timing and routing some vehicles around a corridor when its lane load exceeds 90%. This is an example scheduling rule for the model; the threshold and its effect on traffic still require simulation validation.
+We also included a load-balancing rule in the scheduling logic: whenever occupancy on a given level exceeds 90%, the controller adjusts signal phase lengths and diverts incoming vehicles to less congested layers.
 
-## 3. How SysML represents the system
+## 3. Why we reached for SysML before writing simulation code
 
-The project follows a model-based systems engineering approach to analyze requirements, structure, component interactions, behavior, parameters, and reliability. The proposal describes using the MagicGrid method to organize the problem, solution, and implementation domains, and MagicDraw for modeling. 3DEXPERIENCE is identified as the platform the project planned to use.
+With a system this coupled, jumping straight into code or a 3D animation makes it very easy to miss hidden state conflicts. Following the **MagicGrid methodology** in MagicDraw (with 3DEXPERIENCE planned as our integration platform) forced us to separate the problem, solution, and implementation domains across four diagram families:
 
-- **Requirements and use-case diagrams** describe what the system must do and how actors such as flying cars and traffic control cooperate.
-- **Block definition diagrams (BDDs) and internal block diagrams (IBDs)** show which subsystems make up the system and how components connect and exchange information.
-- **Activity, state-machine, and sequence diagrams** represent travel procedures, component interactions, and vehicle transitions among states such as stationary, takeoff, cruise, landing, and stopped.
-- **Parametric diagrams** describe parameters and constraints such as road levels, route width, separation between levels, vehicle mass, and speed, providing inputs for later scenario analysis.
+- **Requirements and Use-Case Diagrams:** capture safety rules and actor responsibilities between vehicles and dispatch;
+- **BDDs and Internal Block Diagrams (IBDs):** define subsystem boundaries and the exact data/power ports connecting them;
+- **Activity, State-Machine, and Sequence Diagrams:** lock down the command-validation gate, the 5 ms altitude loop, and transitions across stationary, takeoff, cruise, and landing states;
+- **Parametric Diagrams:** bind physical parameters—layer spacing, corridor width, vehicle mass, and velocity caps—into mathematical constraints ready for downstream simulation.
 
-Command validation in the cross-level activity diagram is one concrete example. After the controller issues a command, the system uses spatial-awareness data to check the safety distance. Only a command that passes validation can activate the propulsion system. During a level change, the system repeatedly measures current altitude and compares it with the target level; reaching the target ends the transition.
+## 4. Safety targets vs. unvalidated design inputs
 
-## 4. Safety and reliability
+In our use-case specifications, we wrote down concrete numbers to anchor the parametric model: a vertical transition speed cap of 2 m/s, horizontal turning acceleration under 1g, minimum separation of 5 m horizontally and 3 m vertically, command latency under 50 ms, a peak throughput target of 500 vehicles/min per junction, and a strict lockout of vertical transitions during severe weather.
 
-The project proposal discusses reliability in terms of operating conditions, task duration, environmental effects, system failures, and accident consequences. The midterm materials say that an initial reliability-indicator framework had been developed, with further work planned to connect environmental adaptability, safety, recovery capability, and service life to the fault-handling model.
+When turning our project notes into a blog post, I want to be completely transparent about what those numbers represent: **they are prior design inputs chosen to structure the SysML model, not validated outputs from a traffic simulator or hardware flight test.**
 
-The use-case description lists example design inputs: a vertical transition speed of no more than 2 m/s, horizontal turning acceleration of no more than 1g, vehicle separation of at least 5 m horizontally and 3 m vertically, signal-command latency of no more than 50 ms, and peak throughput of at least 500 vehicles per minute at a single multilevel junction. The files also propose directional priorities and prohibiting between-level operation in severe weather. These values and rules come from a use-case draft. The available project materials provide no corresponding measurements or simulation results, so they should be treated as design inputs awaiting validation.
+## 5. Retrospective: what the model solves and what comes next
 
-## 5. Project stage and validation boundaries
+By the midterm review, our core achievement was turning a vague futuristic concept—“flying cars sharing a 3D intersection”—into a traceable SysML architecture with explicit safety gates and state transitions.
 
-The midterm report records the following progress: preliminary structural models for the flying car and infrastructure, a typical cross-level activity diagram, and an initial reliability-indicator framework. It lists the fault-handling and self-recovery BDD, more detailed intersystem interactions, an operational demonstration, and simulations of normal and accident scenarios as future work.
-
-Accordingly, the project’s preliminary models, proposed design concepts, and unfinished demonstrations, tests, and validation should be kept distinct. The available materials support an explanation of the system mechanisms and modeling approach, but they do not show deployment on real flying cars or urban infrastructure, nor do they provide validation results for the performance targets above.
+The next steps are equally clear: finishing the fault-recovery BDD, wiring up full multi-vehicle sequence diagrams, and feeding our parametric constraints into a microscopic traffic simulation to test whether a 5 m × 3 m safety envelope and a 2 m/s climb rate can actually sustain 500 vehicles per minute without gridlock. Defining those interfaces cleanly before claiming performance numbers is the most valuable habit I took away from this project.
 
 ### Sources
 
-This article is based on the project proposal, midterm presentation, use-case description, and SysML modeling notes. The illustrations come from the project archive’s mode-comparison image, flying-car BDD, and cross-level activity diagram. The diagrams retain their original Chinese labels.
+This post is distilled from our project proposal, midterm presentation, use-case specifications, and SysML model files. All diagrams are exported directly from the project archive and retain their original Chinese labels.

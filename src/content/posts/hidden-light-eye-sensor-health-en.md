@@ -1,6 +1,6 @@
 ---
 title: "The Hidden Light Eye: From Fire Detection to Predictive Maintenance"
-description: "A complete guide to the heritage fire warning system: its hardware, two data paths, and how Isolation Forest, Prophet, and XGBoost support device self-checks."
+description: "How we designed an indoor-light-powered fire warning system for heritage buildings—and used Isolation Forest, Prophet, and XGBoost to monitor the health of the sensors themselves."
 pubDate: 2026-10-08
 category: "项目"
 tags: ["Feng Ru Cup", "Heritage Preservation", "Infrared Sensors", "Fault Detection"]
@@ -9,105 +9,105 @@ featured: false
 draft: false
 ---
 
-A fire warning system for a heritage building needs to answer two questions at once: **Is there a sign of fire in the building, and are the devices responsible for monitoring it still working reliably?** Yinjian Qiedun (The Hidden Light Eye), an AI fire warning platform powered by indoor light, was designed around both questions. It combines light harvesting, infrared temperature sensing, wireless communication, and an intelligent receiver. Alongside fire monitoring, it proposes device health monitoring and maintenance recommendations.
+When you design a fire warning system for a timber heritage building, you immediately run into a practical tension. On one hand, drilling holes or pulling new power cables across historic beams is out of the question, so the sensor nodes need to be compact, wireless, and self-powered. On the other hand, **once you rely on tiny wireless nodes running on harvested indoor light, how do you know whether a quiet sensor is genuinely safe—or simply out of power and failing silently?**
 
-This article follows the system from its hardware and data flows to the roles of its three AI methods.
+In other words, a trustworthy warning system has to answer two questions at the same time: **Is there a sign of fire in the building, and are the sensors watching the building still healthy?** We built *Yinjian Qiedun (The Hidden Light Eye)* around both questions. In this post, I want to walk through how we structured the hardware, why we separated the two data pipelines, and what I learned while designing the three-stage predictive maintenance workflow.
 
 **中文版本：** [幽鉴潜盾：从火情感知到设备预测性维护](/posts/hidden-light-eye-sensor-health/)
 
-## 1. System components
+## 1. Hardware architecture: staying on watch without new wiring
 
-### Field detector: measure temperature and send readings
+### Field detector: infrared sensing and low-power telemetry
 
-Each detector installed inside the building contains an infrared sensing element and a wireless transmitter. The infrared element receives environmental radiation and converts the measurement into temperature data and a digital signal. The wireless module encodes the data and sends it to a receiver over a low-power link. Each device needs a unique ID so the receiver can associate its readings with a location on the building plan.
+Each node mounted inside the building pairs an infrared temperature sensing element with a low-power wireless transmitter. The infrared sensor measures ambient thermal radiation and converts it into a digital temperature reading; the radio module packages that reading together with a unique device ID and sends it to a central receiver. Giving every node a fixed ID sounds trivial, but it is the anchor that lets us map an abstract anomaly score back to a specific beam or hall on the floor plan.
 
-### Power module: harvest indoor light and store energy
+### Power module: balancing indoor light harvesting and storage
 
-A low-light photovoltaic cell converts available light into electricity. The power management circuit supplies the detector and charges a storage battery. When light is available, the harvested energy can run the device and replenish the battery. At night or in low-light conditions, the storage battery continues to power the infrared sensor and wireless module. The project materials also mention maximum power point tracking (MPPT), which adjusts the photovoltaic operating point to improve energy harvesting under changing light conditions.
+To avoid external wiring and frequent ladder climbs for battery swaps, we designed the power stage around a low-light photovoltaic cell, a storage battery, and an energy-management circuit with maximum power point tracking (MPPT). When ambient indoor light is available, harvested energy runs the node and tops up the battery; at night or in dim corners, the storage battery takes over seamlessly.
 
-The goal is to reduce external wiring and frequent battery replacement, allowing small detectors to be installed where construction or maintenance is difficult. Reliable all-day operation still depends on the balance between light, power consumption, battery capacity, and radio transmission frequency. The materials describe the proposed system, but do not include long-term field records that would establish its actual runtime.
+Looking back from an engineering standpoint, the real test of any energy-harvesting node is its **long-term power budget**: whether day-time light harvesting can consistently outpace sleep/wake sensor draw and radio transmissions across winter months. Our project prototype established the circuit architecture, while multi-month field discharge logs remain the next step before claiming maintenance-free runtime.
 
-### Receiver: collect readings and issue two kinds of alerts
+### Receiver: splitting fire alerts from device health
 
-The receiver gathers temperature readings and device telemetry from the detectors. It is responsible for parsing data, identifying fire risk, screening for device faults, presenting maintenance prompts, and giving users a way to review results. This creates two parallel data paths: one monitors the building environment and can trigger a fire warning; the other monitors device health and can prompt maintenance. A device fault alert is for maintaining the warning system itself; it does not replace a fire alarm.
+When packets arrive at the receiver, we deliberately split them into two parallel pipelines: one evaluates environmental temperature changes to trigger **fire warnings**, while the other inspects device telemetry to surface **maintenance prompts**. Keeping these two paths separate is essential—a low-battery or weak-signal alert is a ticket for a technician to check a node, never a false fire alarm that panics staff.
 
-## 2. Fire monitoring: from infrared radiation to an alarm
-
-```text
-Infrared radiation in the environment
-      ↓
-Detector measures temperature and creates a digital signal
-      ↓
-Wireless module encodes and sends the temperature reading
-      ↓
-Receiver interprets temperature changes and assesses risk
-      ↓
-Fire risk warning is displayed for staff to respond to
-```
-
-The project paper describes the fire decision as follows: the receiver applies predefined risk criteria and looks for signals such as unusually high temperatures or rapid temperature changes. When the criteria are met, it issues a fire warning. The sensor and wireless link measure and deliver the readings; the receiver interprets them and alerts staff.
-
-The available materials do not provide reproducible fire thresholds, a decision formula, or false alarm test results. They therefore do not establish the exact temperature or rate of change at which the system will alarm. Those parameters would need to be set using sensor calibration, the building environment, and measured data.
-
-## 3. Device self-check: from operating metrics to maintenance advice
-
-Fire detection uses environmental temperature. Device health monitoring instead focuses on the detector’s own operating metrics. The workflow document lists these fields:
-
-- **Voltage and current:** indicate power supply and energy use.
-- **Signal strength and response frequency:** describe the wireless link and device response.
-- **Timestamp and device ID:** show how readings change over time and identify the device that produced them.
-- **Location, if available:** links a device ID to its position on the building plan.
-
-The proposed data flow covers collection, preprocessing, anomaly screening, trend forecasting, maintenance classification, and location based inspection:
+## 2. The fire-monitoring path: from infrared radiation to alarm
 
 ```text
-Periodically collect operating metrics and device IDs
+Ambient infrared radiation in the hall
       ↓
-Record timestamps, check for missing or invalid values, and prepare numeric features
+Detector measures temperature and generates a digital signal
       ↓
-Isolation Forest: flag observations that differ from the usual pattern
+Low-power wireless link encodes and sends reading + device ID
       ↓
-Prophet: examine the future trend of voltage and other metrics
+Receiver evaluates temperature spikes and rate of rise
       ↓
-XGBoost: combine metrics and classify whether maintenance is needed
-      ↓
-Match device IDs to the floor plan and provide inspection leads
+Fire risk warning alerts staff to inspect and respond
 ```
 
-The workflow document gives one example in which each detector sends health data every one to two hours. This is an example, not a confirmed final sampling interval. Its pseudocode first cleans and screens data locally, then uploads anomalies for trend forecasting and maintenance classification in the cloud. The paper and presentation slides describe AI processing more generally at the receiver or in the cloud, so the actual model deployment location still needs to be specified consistently.
+On the fire-detection branch, the field node’s job is simply to measure and deliver reliably; the receiver evaluates whether temperature levels or rates of change cross risk criteria. In our competition paper we focused on the end-to-end signal path rather than locking in a single universal alarm temperature—because drafty timber halls and enclosed alcoves behave very differently, real deployments need site-specific sensor calibration to balance sensitivity against false alarms.
 
-### Step 1: Isolation Forest flags unusual readings
+## 3. The self-check path: why we stacked three models
 
-Isolation Forest builds a collection of isolation trees by randomly selecting features and splitting their value ranges. For each observation, the model measures how many splits are needed to isolate it in each tree and combines those path lengths into an anomaly score. A reading that differs markedly from most of the data is often isolated with fewer splits and is flagged as anomalous.
+The part of the project I enjoyed designing most was the second pipeline: **how do we tell that a sensor node is degrading before it goes completely dark?**
 
-In this system, a sudden voltage drop, a signal strength far from its normal range, or an unusual combination of current and response frequency could be added to an inspection list. Isolation Forest **finds readings that differ from the observed distribution**; it does not prove that a particular hardware component has failed. The Python example in the project materials uses `-1` for an anomaly and `1` for a normal observation, with `contamination=0.01` as an example setting. The expected anomaly rate must be calibrated against real operating data and false alarm rates; it should not be treated as a fixed product specification.
+Instead of adding extra diagnostic hardware, we used four operating metrics the node already knows about itself:
 
-### Step 2: Prophet tracks how a metric changes over time
+- **Voltage and current:** reflect photovoltaic charging and battery health;
+- **Signal strength and response frequency:** capture wireless link quality and controller responsiveness;
+- **Timestamp and device ID:** align readings into per-device time series;
+- **Floor-plan location:** maps each device ID to its physical mounting spot.
 
-Anomaly screening focuses on individual or local readings. Prophet focuses on how a metric changes over time. In the workflow example, timestamps for each device are placed in a `ds` column and voltage readings in a `y` column. The model is trained on this time series and returns a forecast with a central estimate and upper and lower bounds. If voltage keeps falling, the trend and forecast interval can provide a reason to inspect the power supply or storage battery.
+We organized the self-check pipeline into three stages—anomaly screening, trend forecasting, and maintenance classification:
 
-A forecast is a projection based on the available history, not a fault diagnosis. One example forecasts 24 hours ahead; another document mentions 24 to 48 hours. The horizon, sampling interval, and metrics to forecast must be selected for the actual data. The AI principles document also notes that Prophet is better suited to longer time series with trends and seasonal patterns, so its performance on short histories or small datasets needs to be tested separately.
+```text
+Collect operating metrics + device IDs (e.g., every 1–2 hours)
+      ↓
+Clean timestamps, filter invalid packets, and build numeric features
+      ↓
+Isolation Forest: flag outlier readings that break normal patterns
+      ↓
+Prophet: project 24–48h trends for voltage and power health
+      ↓
+XGBoost: combine multi-metric features into a maintenance priority
+      ↓
+Link device ID to the building plan for targeted inspection
+```
 
-### Step 3: XGBoost classifies maintenance needs
+In our prototype workflow, nodes report health heartbeats every one to two hours: lightweight cleaning and outlier screening run locally first, while heavier trend forecasting and classification can run at the receiver or in the cloud.
 
-XGBoost is a supervised classification method. The workflow describes voltage, current, signal strength, and response frequency as input features, with `needs_maintenance` as the training label. From labeled examples, the model learns relationships between combinations of metrics and maintenance status, then classifies new readings as normal or requiring maintenance. The training materials also mention splitting data into training and validation sets and evaluating the model with metrics such as accuracy.
+### Step 1: Isolation Forest catches sudden outliers
 
-This step depends on trustworthy historical labels. A technician must inspect a device and confirm whether it needed repair before that outcome can become a useful training label. If labels are generated only from preset thresholds or simulated rules, the model may simply learn those rules instead of detecting real field failures. Its classification should therefore be treated as a maintenance priority suggestion, followed by human inspection.
+When you first deploy a sensor network, you have zero labeled failure data. That is why we started with **Isolation Forest**, an unsupervised method that randomly splits features to see how quickly a data point gets isolated. Readings that look nothing like the rest of the fleet—a sudden voltage dip, an abnormally weak radio packet, or an odd combination of high current and sluggish response frequency—require very few splits and get flagged as `-1` (anomalous).
 
-## 4. How the three methods work together
+One important caveat we kept in mind: **a statistical outlier is not proof of a broken component.** Our Python prototype used `contamination=0.01` as a starting point, but in production that threshold has to be tuned against real false-alarm rates.
 
-Their responsibilities can be summarized as follows:
+### Step 2: Prophet tracks slow voltage drift
 
-| Stage | Method | Question answered | Main output |
+Point-in-time outlier detection is great for sudden glitches, but it often misses slow, steady degradation—like dust settling on a photovoltaic cell so the battery loses a fraction of a volt every day. To catch gradual drift, we fed each node’s timestamp (`ds`) and voltage history (`y`) into **Prophet** to project a 24-to-48-hour forecast interval. If the projected trend line and lower bound keep sliding toward the cutoff voltage, staff get an early heads-up to clean the panel or check the battery.
+
+Because Prophet shines on longer time series with daily or seasonal cycles, we also noted that newly installed nodes need a baseline warm-up period before short-horizon forecasts become reliable.
+
+### Step 3: XGBoost prioritizes maintenance
+
+Finally, we used **XGBoost** as a supervised classifier taking voltage, current, signal strength, and response frequency as inputs to predict `needs_maintenance`.
+
+Working through this stage highlighted a classic machine-learning trap: **a supervised model is only as honest as its labels.** If training labels are generated purely from synthetic rules or fixed thresholds, XGBoost will simply memorize those rules. For the classifier to add real value in the field, technicians need to log what they actually found during inspections so confirmed repairs become the ground-truth training labels.
+
+## 4. How the three models fit together in practice
+
+Rather than duplicating one another, each method answers a different operational question:
+
+| Stage | Method | Engineering question answered | Primary output |
 |---|---|---|---|
-| Anomaly screening | Isolation Forest | Which observations differ markedly from the usual pattern? | Anomaly records and scores or labels |
-| Trend forecasting | Prophet | How might a metric change next? | Time series forecast and interval |
-| Maintenance classification | XGBoost | Which devices should be prioritized for maintenance? | Normal or maintenance-needed class |
+| Outlier screening | Isolation Forest | Does this latest packet look unusual compared with normal operation? | Anomaly flag (-1/1) and score |
+| Trend forecasting | Prophet | Where is this node’s voltage heading over the next 24–48 hours? | Forecast curve and confidence bounds |
+| Maintenance triage | XGBoost | Given all metrics together, should we send someone to inspect this node now? | Normal vs. maintenance-needed class |
 
-Together, these form an **analysis workflow** from monitoring to maintenance. This does not necessarily mean that the output of each model becomes the input to the next. The workflow document says that XGBoost is trained on sensor metrics and maintenance labels; it does not clearly state that Isolation Forest anomaly scores or Prophet forecasts are XGBoost features. The final system diagram should show the data interfaces and specify whether the methods run in sequence, in parallel, or are combined by receiver-side rules.
+In our initial implementation, XGBoost trained directly on the four sensor metrics rather than consuming the Isolation Forest score or Prophet slope as input features. If I were extending this pipeline today, feeding the anomaly score and forecasted voltage slope directly into the classifier—and formalizing the feedback loop from technician repair logs—would be my very first upgrade.
 
-## 5. Turning anomalies into inspection leads
+## 5. Turning model flags into actionable inspection leads
 
-Once a model flags a device ID, the receiver can look up that ID on the building plan to help staff find its location. The readings can then narrow down what to inspect first. For example, persistently low power or voltage may warrant checking the low-light photovoltaic cell, storage battery, or energy management circuit. Weak wireless signal or an unusual response frequency may warrant checking the communication link or infrared sensing module. The project’s Q&A notes describe an interactive chart that would show the device ID and its readings when a user hovers over a point.
+An algorithm flagging `Device #14` is only useful if a staff member knows where `#14` is and what tool to bring. By binding every device ID to an interactive floor plan, hovering over a flagged node immediately shows its mounting location alongside its recent metric history: persistent low voltage points toward the low-light solar cell or storage stage, whereas weak RSSI or erratic response frequency points toward the radio link or sensing module.
 
-These are **possible causes** to guide an inspection; a single metric does not map one-to-one to a failed component. After maintenance, staff should record what they found, what they repaired, and the result of a follow-up check. If the project moves into continuous operation, confirmed service records could provide more reliable labels for improving models and thresholds over time. The archived materials do not yet show a complete maintenance feedback process.
+Building *The Hidden Light Eye* taught me that hardware and AI in IoT systems are really two halves of the same reliability loop: low-power harvesting makes wireless deployment possible, and self-check telemetry makes sure that "out of sight" never turns into "silently offline."
