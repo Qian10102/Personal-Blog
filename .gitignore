@@ -4,5 +4,5 @@ dist/
 .env
 *.log
 
-#macOS system file filter
-.DS_Store/
+# macOS Finder metadata
+.DS_Store
