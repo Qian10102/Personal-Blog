@@ -1670,6 +1670,30 @@ button:active,
   }
 }
 
+/* Keep the extended navigation on its own row at tablet widths. */
+@media (min-width: 761px) and (max-width: 960px) {
+  .desktop-nav {
+    display: none;
+  }
+  .mobile-nav {
+    display: block;
+    margin: 0.55rem 0 0;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    background: var(--surface-muted);
+  }
+  .mobile-nav .navigation-links {
+    justify-content: space-between;
+    padding: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mobile-nav .navigation-links > a,
+  .mobile-nav .vocabulary-menu-toggle {
+    flex: 1 0 auto;
+  }
+}
+
 /* Responsive layout */
 @media (max-width: 760px) {
   .page-shell {

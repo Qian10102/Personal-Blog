@@ -1,0 +1,4 @@
+project_id = "personal-blog"
+
+[functions.review-task-breakdown]
+verify_jwt = true

@@ -7,3 +7,4 @@ github-profile/
 
 # macOS metadata in every directory
 .DS_Store
+supabase/.temp/

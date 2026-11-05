@@ -1,0 +1,90 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import UiText from "../components/UiText.astro";
+import "../styles/review-planner.css";
+---
+
+<BaseLayout
+  title={{ zh: "复习计划", en: "Review planner" }}
+  description={{
+    zh: "让课程与复习各得其时，规划属于你的备考节奏。",
+    en: "Plan exam preparation around your classes and your time.",
+  }}
+>
+  <section class="page-intro planner-intro">
+    <p class="kicker">
+      <UiText zh="留出时间，学有所获" en="MAKE ROOM TO LEARN" />
+    </p>
+    <h1>
+      <UiText
+        zh="复习，也有从容的节奏。"
+        en="A little structure. Room to learn."
+      />
+    </h1>
+    <p>
+      <UiText
+        zh="从课程表到考试日，把要学的内容，安排进真正有空的时间。"
+        en="From your timetable to exam day, give every topic a place in the time you have."
+      />
+    </p>
+  </section>
+  <section
+    class="planner"
+    data-planner
+    aria-label="复习计划"
+    data-ui-aria-label
+    data-zh="复习计划"
+    data-en="Review planner"
+  >
+    <p
+      data-planner-status
+      class="planner-status"
+      role="status"
+      aria-live="polite"
+    >
+    </p>
+    <div data-planner-config hidden class="planner-card">
+      <UiText
+        zh="复习服务尚未连接，请配置网站的 Supabase 环境变量。"
+        en="The planner is not connected. Configure the site's Supabase environment variables."
+      />
+    </div>
+    <div data-planner-login hidden class="planner-card planner-login">
+      <div>
+        <p class="eyebrow">
+          <UiText zh="你的私人学习空间" en="YOUR PRIVATE STUDY SPACE" />
+        </p><h2>
+          <UiText
+            zh="登录，接着安排。"
+            en="Sign in. Pick up where you left off."
+          />
+        </h2><p>
+          <UiText
+            zh="沿用背单词账号，课表和进度在设备间同步。"
+            en="Use your vocabulary account to sync your timetable and progress across devices."
+          />
+        </p>
+      </div>
+      <form data-planner-login-form>
+        <label for="planner-email"
+          ><UiText zh="邮箱地址" en="Email address" /></label
+        ><input
+          id="planner-email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+        /><button type="submit" class="planner-primary"
+          ><UiText zh="发送登录链接" en="Send sign-in link" /></button>
+      </form>
+    </div>
+    <div data-planner-app hidden></div>
+    <noscript
+      ><p>
+        请启用 JavaScript 使用复习计划。Please enable JavaScript to use the
+        planner.
+      </p></noscript
+    >
+  </section>
+  <script src="../scripts/review-planner.ts"></script>
+</BaseLayout>

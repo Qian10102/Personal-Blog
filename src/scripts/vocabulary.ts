@@ -1,4 +1,5 @@
 import { PracticeRound } from "../lib/practice-round";
+import { consumePlannerReturn } from "../lib/review-auth-return";
 import {
   type Mistake,
   dueMistakes,
@@ -859,6 +860,14 @@ if (!url || !anonKey) {
     }
     document.querySelector<HTMLElement>("[data-user-email]")!.textContent =
       email!;
+    try {
+      if (consumePlannerReturn(localStorage)) {
+        window.location.replace("/review-planner/");
+        return;
+      }
+    } catch {
+      /* Optional navigation recovery; normal vocabulary login still works. */
+    }
     try {
       await loadCards();
       if (pendingReview && !cards.some((c) => c.id === pendingReview!.cardId))

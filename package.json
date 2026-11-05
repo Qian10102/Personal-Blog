@@ -11,12 +11,16 @@
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.12",
+    "@js-temporal/polyfill": "0.5.1",
     "@supabase/supabase-js": "^2.117.1",
     "astro": "^5.0.0",
-    "fuse.js": "^7.0.0"
+    "exceljs": "4.4.0",
+    "fuse.js": "^7.0.0",
+    "papaparse": "5.5.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.0",
+    "@types/papaparse": "5.3.16",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.7.0"
   }

@@ -62,6 +62,12 @@ B2 专题来自两份公开教学资源的 43 词条并集（其中 penser 已�
 
 运行 `npm test`、`npm run build` 验证本地代码。`tests/sql/vocabulary-mistakes.sql` 是数据库集成验证脚本，需在已配置授权测试账号的数据库中由管理员执行；它测试阶段边界、原子计数、去重和权限，所有测试写入最终回滚。
 
+## 复习计划
+
+`/review-planner/` 使用现有私人账号，支持课表手动录入及 Excel／CSV 模板导入、单双周和调课、多场考试、AI 任务草稿、课外排程、计划预览及完成记录同步。AI 仅拆分考试范围，时间由本地规则安排；未配置 AI 时仍可手动创建任务。
+
+上线前应用 `supabase/migrations/20261103142006_review_planner.sql`，部署 `review-task-breakdown` Edge Function，在 Supabase 服务端设置 `DEEPSEEK_API_KEY`。登录沿用已配置的 `/vocabulary/` 回调并自动返回复习计划，前端沿用现有公开环境变量。配置、排程规则及验证说明见 [复习计划说明](docs/review-planner.md)。
+
 ## 腾讯云发布（服务器无需 Git）
 
 1. 在服务器创建仅 root 可读的证书目录（例如 `/etc/nginx/certs`），上传腾讯云下载的 `域名_bundle.crt` 和 `域名.key`；私钥文件权限设为 `600`。
