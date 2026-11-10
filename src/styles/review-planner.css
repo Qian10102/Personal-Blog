@@ -125,7 +125,7 @@ html[data-theme="dark"] .planner .planner-danger {
   line-height: 1.4;
   min-width: 0;
 }
-.planner input:not([type="checkbox"]),
+.planner input:not([type="checkbox"]):not([type="file"]),
 .planner select {
   height: 2.75rem;
   min-height: 2.75rem;
@@ -362,22 +362,36 @@ html[data-theme="dark"] .planner .planner-danger {
   align-items: flex-end;
 }
 .planner-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   flex: 1 1 18rem;
   max-width: 30rem;
-}
-.planner input[type="file"] {
-  padding: 0.3rem 0.5rem;
   font-size: 0.85rem;
+  color: var(--muted);
 }
-.planner input[type="file"]::file-selector-button {
-  margin-inline-end: 0.65rem;
-  padding: 0.35rem 0.6rem;
+.planner .planner-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
   border: 0;
-  border-radius: 0.4rem;
-  background: var(--surface-muted);
-  color: var(--ink);
-  font: inherit;
-  cursor: pointer;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.planner-import-feedback {
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: pre-line;
+}
+.planner-import-feedback[data-error="true"] {
+  color: #b23747;
+}
+html[data-theme="dark"] .planner-import-feedback[data-error="true"] {
+  color: #ff9daa;
 }
 @media (forced-colors: active) {
   .planner select {

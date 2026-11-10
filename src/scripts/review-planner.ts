@@ -26,6 +26,8 @@ import {
   excelTemplate,
   parseCsv,
   parseWorkbook,
+  importFailure,
+  openImportPicker,
   templateHeaders,
   validateImportRows,
   type ImportRow,
@@ -35,6 +37,8 @@ import { rememberPlannerReturn } from "../lib/review-auth-return";
 const root = document.querySelector<HTMLElement>("[data-planner-app]")!;
 const status = document.querySelector<HTMLElement>("[data-planner-status]")!;
 const login = document.querySelector<HTMLElement>("[data-planner-login]")!;
+const importInput =
+  document.querySelector<HTMLInputElement>("[data-import-file]")!;
 const allowedEmail = "qianzihanduo@gmail.com";
 const tr = (zh: string, en: string) =>
   document.documentElement.dataset.uiLanguage === "en" ? en : zh;
@@ -61,6 +65,10 @@ let busy = false;
 let loaded = false;
 let preview: Plan | null = null;
 let importRows: ImportRow[] | null = null;
+let readingImport = false;
+let importRequest = 0;
+let importMessage: [string, string] | null = null;
+let importError = false;
 let aiDraft: {
   examId: string;
   tasks: Omit<Task, "id" | "examId" | "confirmed">[];
@@ -82,6 +90,26 @@ function say(zh: string, en: string, error = false) {
   messageError = error;
   status.textContent = tr(zh, en);
   status.dataset.error = String(error);
+}
+function sayImport(zh: string, en: string, error = false) {
+  importMessage = [zh, en];
+  importError = error;
+  const feedback = root.querySelector<HTMLElement>("[data-import-feedback]");
+  if (feedback) {
+    feedback.textContent = tr(zh, en);
+    feedback.dataset.error = String(error);
+  }
+}
+function resetImport() {
+  importRows = null;
+  readingImport = false;
+  importRequest++;
+  importMessage = null;
+  importError = false;
+  importInput.value = "";
+}
+function renderImportFeedback(): string {
+  return `<p id="planner-import-feedback" class="planner-import-feedback" data-import-feedback data-error="${importError}" role="status">${esc(importMessage ? tr(...importMessage) : tr("支持 CSV 或 Excel（.xlsx），最大 2 MB。选择后会先显示预览。", "CSV or Excel (.xlsx), up to 2 MB. A preview appears after selection."))}</p>`;
 }
 const phaseName = (p: Phase) =>
   ({
@@ -164,7 +192,7 @@ function renderCourses(): string {
       ],
     )}</div>${submit(c ? tr("更新课程", "Update class") : tr("添加课程", "Add class"))}</form>
     ${d.courses.length ? `<ul class="planner-list">${d.courses.map((c) => `<li><div class="planner-section-heading"><div><strong>${esc(c.subject)}</strong><p>${dayName(c.weekday)} ${c.start}–${c.end} · ${esc(c.weeks)} · ${{ all: tr("全部", "All"), odd: tr("单周", "Odd"), even: tr("双周", "Even") }[c.parity]}</p></div>${controls("course", c.id)}</div></li>`).join("")}</ul>` : empty()}
-  </section><section class="planner-card"><h2>${tr("批量导入课程", "Import classes")}</h2><p class="planner-muted">${tr("使用专用模板，第一行保留中文列名；最多 500 行、文件不超过 2 MB。文件在当前浏览器解析。", "Use the template with its Chinese headers; up to 500 rows and 2 MB. Files are parsed in your browser.")}</p><div class="planner-actions planner-import-actions">${action("template-csv", tr("下载 CSV 模板", "CSV template"))}${action("template-xlsx", tr("下载 Excel 模板", "Excel template"))}<label class="planner-file">${tr("选择课表", "Choose timetable")}<input data-import-file type="file" accept=".csv,.xlsx"></label></div>${renderImport()}</section>
+  </section><section class="planner-card"><h2>${tr("批量导入课程", "Import classes")}</h2><p class="planner-muted">${tr("使用专用模板，第一行保留中文列名；最多 500 行、文件不超过 2 MB。文件在当前浏览器解析。", "Use the template with its Chinese headers; up to 500 rows and 2 MB. Files are parsed in your browser.")}</p><div class="planner-actions planner-import-actions">${action("template-csv", tr("下载 CSV 模板", "CSV template"))}${action("template-xlsx", tr("下载 Excel 模板", "Excel template"))}<div class="planner-file"><span>${tr("课表文件", "Timetable file")}</span><button type="button" data-action="choose-file" aria-controls="planner-timetable-file" aria-describedby="planner-import-feedback">${tr("选择课表文件", "Choose timetable file")}</button></div></div>${renderImportFeedback()}${renderImport()}</section>
   <section class="planner-card"><h2>${tr("停课与补课", "Cancellations & makeup classes")}</h2><form data-form="adjustment"><div class="planner-fields">${select(
     "kind",
     tr("类型", "Type"),
@@ -347,6 +375,7 @@ function renderPlan(): string {
       .join("")}</section>`;
 }
 function render() {
+  importInput.disabled = !owner || !loaded || readingImport;
   if (!owner) return;
   root.innerHTML = `<div class="planner-toolbar"><p>${esc(allowedEmail)}<br><small>${tr("已同步版本", "Synced revision")} ${state.revision}</small></p><div class="planner-actions">${pending ? action("retry", tr("重试保存", "Retry save"), "", "planner-primary") : ""}${action("backup", tr("下载输入备份", "Download input backup"))}${action("reload", tr("重新加载", "Reload"))}${action("signout", tr("退出登录", "Sign out"))}</div></div>${pending ? `<p class="planner-alert">${tr("有一次保存尚未确认。输入已保留，请重试保存；切换设备前确认同步成功。", "A save is unconfirmed. Your input is kept. Retry and confirm synchronization before switching devices.")}</p>` : ""}${
     loaded
@@ -370,7 +399,7 @@ function render() {
           ),
         )
   }`;
-  root.setAttribute("aria-busy", String(busy));
+  root.setAttribute("aria-busy", String(busy || readingImport));
   root
     .querySelectorAll<
       | HTMLInputElement
@@ -379,8 +408,13 @@ function render() {
       | HTMLTextAreaElement
     >("input,button,select,textarea")
     .forEach((el) => {
+      if (el.dataset.action === "choose-file") {
+        el.disabled = importInput.disabled;
+        return;
+      }
       if (
         busy ||
+        (readingImport && el.closest('form[data-form="import"]')) ||
         (pending &&
           !["retry", "reload", "backup", "signout"].includes(
             el.dataset.action ?? "",
@@ -512,6 +546,7 @@ root.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target as HTMLFormElement;
   if (!form.dataset.form || pending || busy) return;
+  if (form.dataset.form === "import" && readingImport) return;
   const f = new FormData(form),
     val = (k: string) => String(f.get(k) ?? "").trim(),
     num = (k: string) => Number(val(k));
@@ -643,7 +678,7 @@ root.addEventListener("submit", (event) => {
         doc.courses.push(row.course);
         existing.add(signature(row.course));
       }
-    importRows = null;
+    resetImport();
   }
   if (kind === "ai-draft" && aiDraft) {
     const examId = aiDraft.examId;
@@ -686,7 +721,22 @@ root.addEventListener("click", async (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
     "button",
   );
-  if (!button || busy) return;
+  if (!button) return;
+  if (button.dataset.action === "choose-file") {
+    if (!owner || !loaded || readingImport) return;
+    try {
+      // Do not await or rerender before opening the browser's file picker.
+      openImportPicker(importInput);
+    } catch {
+      sayImport(
+        "浏览器未能打开文件选择窗口，请刷新页面后重试。",
+        "The browser could not open the file picker. Refresh the page and retry.",
+        true,
+      );
+    }
+    return;
+  }
+  if (busy) return;
   if (button.dataset.tab) {
     tab = button.dataset.tab;
     edit = null;
@@ -723,7 +773,7 @@ root.addEventListener("click", async (event) => {
   }
   if (name === "reload") {
     if (
-      (pending || preview || aiDraft || edit) &&
+      (pending || preview || aiDraft || edit || importRows || readingImport) &&
       !confirm(
         tr(
           "重新加载会丢弃尚未保存的本页输入。需要时请先下载输入备份。继续？",
@@ -737,7 +787,7 @@ root.addEventListener("click", async (event) => {
     preview = null;
     aiDraft = null;
     edit = null;
-    importRows = null;
+    resetImport();
     await load();
     return;
   }
@@ -748,7 +798,7 @@ root.addEventListener("click", async (event) => {
     return;
   }
   if (name === "cancel-import") {
-    importRows = null;
+    resetImport();
     render();
     return;
   }
@@ -965,47 +1015,46 @@ root.addEventListener("change", async (event) => {
     });
     return;
   }
-  if (
-    !field.matches("[data-import-file]") ||
-    !field.files?.length ||
-    pending ||
-    busy
-  )
-    return;
-  const file = field.files[0],
-    ticket = epoch;
+});
+importInput.addEventListener("change", async () => {
+  if (!owner || !loaded || !importInput.files?.length || readingImport) return;
+  const file = importInput.files[0],
+    ticket = epoch,
+    request = ++importRequest;
   if (file.size > 2 * 1024 * 1024) {
-    say(
+    sayImport(
       "课表文件不能超过 2 MB。",
       "Timetable files must be no larger than 2 MB.",
       true,
     );
+    importInput.value = "";
     return;
   }
-  busy = true;
+  readingImport = true;
+  sayImport(`正在读取「${file.name}」…`, `Reading “${file.name}”…`);
+  render();
   try {
-    const rows = /\.csv$/i.test(file.name)
-      ? parseCsv(await file.text())
-      : /\.xlsx$/i.test(file.name)
-        ? await parseWorkbook(await file.arrayBuffer())
-        : null;
-    if (ticket !== epoch) return;
-    if (!rows?.length) throw new Error();
+    let rows: ImportRow[];
+    if (/\.csv$/i.test(file.name)) rows = parseCsv(await file.text());
+    else if (/\.xlsx$/i.test(file.name))
+      rows = await parseWorkbook(await file.arrayBuffer());
+    else throw new Error("unsupported_file");
+    if (ticket !== epoch || request !== importRequest) return;
+    if (!rows.length) throw new Error("no_courses");
     importRows = rows;
-    say(
-      "请检查导入预览；确认后才会保存。",
-      "Review the import preview. Nothing is saved until you confirm.",
+    sayImport(
+      `已读取「${file.name}」，共 ${rows.length} 行。请检查下方预览，确认后才会保存。`,
+      `Read “${file.name}”: ${rows.length} rows. Check the preview below; nothing is saved until you confirm.`,
     );
-  } catch {
-    if (ticket === epoch)
-      say(
-        "无法读取课表，请使用下载的 CSV 或 Excel 模板，保留首行列名且不超过 500 行。",
-        "Cannot read the timetable. Use the downloaded CSV or Excel template with its headers and at most 500 rows.",
-        true,
-      );
+  } catch (error) {
+    if (ticket === epoch && request === importRequest) {
+      const message = importFailure(error);
+      sayImport(message.zh, message.en, true);
+    }
   } finally {
-    if (ticket === epoch) {
-      busy = false;
+    if (ticket === epoch && request === importRequest) {
+      readingImport = false;
+      importInput.value = "";
       render();
     }
   }
@@ -1061,11 +1110,12 @@ async function showSession(session: AuthSession | null) {
   pending = null;
   preview = null;
   aiDraft = null;
-  importRows = null;
+  resetImport();
   edit = null;
   busy = false;
   loaded = false;
   root.replaceChildren();
+  importInput.disabled = true;
   root.hidden = !owner;
   login.hidden = Boolean(owner);
   state = {
@@ -1126,7 +1176,8 @@ document.addEventListener("ui-language-change", () => {
   }
 });
 window.addEventListener("beforeunload", (event) => {
-  if (pending || aiDraft || preview || edit) event.preventDefault();
+  if (pending || aiDraft || preview || edit || importRows || readingImport)
+    event.preventDefault();
 });
 const url = import.meta.env.PUBLIC_SUPABASE_URL,
   apiKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;

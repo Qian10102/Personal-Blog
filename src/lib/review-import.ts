@@ -24,6 +24,25 @@ export type ImportRow = {
   course: Course | null;
   issues: Issue[];
 };
+
+type FilePicker = Pick<HTMLInputElement, "value" | "disabled" | "click"> &
+  Partial<Pick<HTMLInputElement, "showPicker">>;
+
+// Keep this synchronous: Safari requires the picker to open in the click event.
+export function openImportPicker(input: FilePicker): void {
+  if (input.disabled) throw new Error("file_input_disabled");
+  input.value = "";
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+      return;
+    } catch {
+      // Older browsers and embedded pages may only support native click().
+    }
+  }
+  input.click();
+}
+
 const weekdays: Record<string, number> = {
   一: 1,
   二: 2,
@@ -149,16 +168,68 @@ export function parseCsv(text: string): ImportRow[] {
   return validateImportRows(parsed.data);
 }
 export async function parseWorkbook(buffer: ArrayBuffer): Promise<ImportRow[]> {
-  const { default: ExcelJS } = await import("exceljs");
+  const [{ default: ExcelJS }, { workbookWithoutNotes }] = await Promise.all([
+    import("exceljs"),
+    import("./review-workbook.ts"),
+  ]).catch((cause) => {
+    throw new Error("workbook_reader_unavailable", { cause });
+  });
   const book = new ExcelJS.Workbook();
-  await book.xlsx.load(buffer);
+  try {
+    await book.xlsx.load(await workbookWithoutNotes(buffer));
+  } catch (cause) {
+    throw new Error("invalid_xlsx", { cause });
+  }
   const sheet = book.worksheets[0];
-  if (!sheet || sheet.rowCount > 501) throw new Error("too_many_rows");
+  if (!sheet) throw new Error("empty_workbook");
+  if (sheet.rowCount > 501) throw new Error("too_many_rows");
   const rows: unknown[][] = [];
   sheet.eachRow({ includeEmpty: true }, (row) =>
     rows.push(Array.from({ length: 6 }, (_, i) => row.getCell(i + 1).value)),
   );
   return validateImportRows(rows);
+}
+export function importFailure(error: unknown): Issue {
+  const messages: Record<string, Issue> = {
+    template_headers: {
+      zh: "首行列名不匹配，请依次填写：科目、星期、开始时间、结束时间、周次、单双周。",
+      en: "The first row must contain these headers in order: 科目, 星期, 开始时间, 结束时间, 周次, 单双周.",
+    },
+    too_many_rows: {
+      zh: "课表超过 500 行，请拆分文件后导入。",
+      en: "The timetable exceeds 500 rows. Split the file before importing.",
+    },
+    empty_workbook: {
+      zh: "Excel 文件没有工作表，请使用下载的模板。",
+      en: "The Excel file has no worksheets. Use the downloaded template.",
+    },
+    no_courses: {
+      zh: "文件中没有课程，请在表头下填写课程后再导入。",
+      en: "No lessons found. Add lessons below the header before importing.",
+    },
+    unsupported_file: {
+      zh: "不支持此文件类型，请选择 .xlsx 或 UTF-8 编码的 .csv 文件。",
+      en: "Choose an .xlsx or UTF-8 .csv file.",
+    },
+    invalid_csv: {
+      zh: "CSV 结构不完整，请检查引号和分隔符，或重新另存为 UTF-8 CSV。",
+      en: "The CSV structure is invalid. Check quotes and delimiters, or save it as UTF-8 CSV again.",
+    },
+    invalid_xlsx: {
+      zh: "无法解析 Excel 文件，可能已损坏或包含不兼容内容。请用 Excel 另存为 .xlsx，或导出为 UTF-8 CSV 后重试。",
+      en: "The Excel file could not be parsed. It may be damaged or contain unsupported content. Save it as .xlsx or export it as UTF-8 CSV and retry.",
+    },
+    workbook_reader_unavailable: {
+      zh: "Excel 读取组件加载失败，请检查网络并刷新页面后重试。",
+      en: "The Excel reader could not load. Check your connection, refresh the page, and retry.",
+    },
+  };
+  return (
+    messages[error instanceof Error ? error.message : ""] ?? {
+      zh: "课表读取失败，请重新选择文件后重试。",
+      en: "The timetable could not be read. Select the file again and retry.",
+    }
+  );
 }
 export function csvTemplate(): string {
   return "\uFEFF" + Papa.unparse(templateRows);

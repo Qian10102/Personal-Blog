@@ -75,9 +75,20 @@ import "../styles/review-planner.css";
           autocomplete="email"
           required
         /><button type="submit" class="planner-primary"
-          ><UiText zh="发送登录链接" en="Send sign-in link" /></button>
+          ><UiText zh="发送登录链接" en="Send sign-in link" /></button
+        >
       </form>
     </div>
+    <input
+      id="planner-timetable-file"
+      class="planner-file-input"
+      data-import-file
+      type="file"
+      accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      tabindex="-1"
+      aria-hidden="true"
+      disabled
+    />
     <div data-planner-app hidden></div>
     <noscript
       ><p>
