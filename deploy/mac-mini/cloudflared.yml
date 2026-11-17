@@ -1,0 +1,11 @@
+tunnel: 5ba9b980-f734-49fa-a060-1dfd6bc541b4
+credentials-file: /run/secrets/tunnel.json
+protocol: http2
+metrics: 127.0.0.1:20241
+
+ingress:
+  - hostname: zihan-server.com
+    service: http://web:8080
+  - hostname: www.zihan-server.com
+    service: http://web:8080
+  - service: http_status:404

@@ -8,3 +8,9 @@ github-profile/
 # macOS metadata in every directory
 .DS_Store
 supabase/.temp/
+
+# Local production files and tunnel credentials
+deploy/mac-mini/site/
+deploy/mac-mini/.env
+deploy/mac-mini/secrets/
+work/local-publish/

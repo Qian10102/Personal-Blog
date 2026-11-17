@@ -178,6 +178,8 @@ export async function parseWorkbook(buffer: ArrayBuffer): Promise<ImportRow[]> {
   try {
     await book.xlsx.load(await workbookWithoutNotes(buffer));
   } catch (cause) {
+    if (cause instanceof Error && cause.message === "workbook_too_large")
+      throw cause;
     throw new Error("invalid_xlsx", { cause });
   }
   const sheet = book.worksheets[0];
@@ -198,6 +200,10 @@ export function importFailure(error: unknown): Issue {
     too_many_rows: {
       zh: "课表超过 500 行，请拆分文件后导入。",
       en: "The timetable exceeds 500 rows. Split the file before importing.",
+    },
+    workbook_too_large: {
+      zh: "Excel 文件解压后的数据过多，请删除不需要的工作表或图片，或导出为 CSV 后重试。",
+      en: "The Excel workbook contains too much expanded data or too many files. Remove unused sheets or images, or export it as CSV and retry.",
     },
     empty_workbook: {
       zh: "Excel 文件没有工作表，请使用下载的模板。",

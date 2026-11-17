@@ -157,6 +157,133 @@ test("ExcelJS notes import too; files without notes are passed through unchanged
   assert.equal((await parseWorkbook(bytes))[0].course.subject, "数学");
 });
 
+const entryByteLimit = 4 * 1024 * 1024;
+const totalByteLimit = 16 * 1024 * 1024;
+async function compressedWorkbook(entries) {
+  const zip = await JSZip.loadAsync(await excelTemplate());
+  for (const [name, content] of entries)
+    zip.file(name, content, { createFolders: false });
+  const bytes = await zip.generateAsync({
+    type: "arraybuffer",
+    compression: "DEFLATE",
+  });
+  assert.ok(bytes.byteLength < 2 * 1024 * 1024);
+  return bytes;
+}
+
+test("small compressed workbooks reject oversized entries before note or workbook parsing", async () => {
+  for (const name of [
+    "xl/worksheets/_rels/sheet1.xml.rels",
+    "xl/worksheets/sheet2.xml",
+    "xl/sharedStrings.xml",
+    "xl/media/image1.png",
+    "unused.bin",
+  ]) {
+    const bytes = await compressedWorkbook([
+      [name, " ".repeat(entryByteLimit + 1)],
+    ]);
+    await assert.rejects(workbookWithoutNotes(bytes), /^Error: workbook_too_large$/);
+    await assert.rejects(parseWorkbook(bytes), /^Error: workbook_too_large$/);
+  }
+});
+
+test("oversized archives never reach full-member reads or ExcelJS loading", async (t) => {
+  const bytes = await compressedWorkbook([
+    ["unused.bin", " ".repeat(entryByteLimit + 1)],
+  ]);
+  const load = JSZip.loadAsync;
+  t.mock.method(JSZip, "loadAsync", async (...args) => {
+    const zip = await load.apply(JSZip, args);
+    for (const entry of Object.values(zip.files))
+      t.mock.method(entry, "async", () => {
+        assert.fail("a complete ZIP member was allocated before rejection");
+      });
+    return zip;
+  });
+  t.mock.method(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), "load", () => {
+    assert.fail("ExcelJS loaded an archive before its expansion check");
+  });
+  await assert.rejects(parseWorkbook(bytes), /^Error: workbook_too_large$/);
+});
+
+test("expanded bytes are counted even when ZIP size metadata understates them", async () => {
+  const bytes = await compressedWorkbook([
+    ["unused.bin", " ".repeat(entryByteLimit + 1)],
+  ]);
+  const view = new DataView(bytes);
+  let changed = false;
+  for (let offset = 0; offset <= bytes.byteLength - 46; offset++) {
+    if (view.getUint32(offset, true) !== 0x02014b50) continue;
+    const nameLength = view.getUint16(offset + 28, true);
+    const name = new TextDecoder().decode(
+      new Uint8Array(bytes, offset + 46, nameLength),
+    );
+    if (name === "unused.bin") {
+      view.setUint32(offset + 24, 1, true);
+      changed = true;
+      break;
+    }
+  }
+  assert.ok(changed, "patched the central directory's expanded size");
+  await assert.rejects(parseWorkbook(bytes), /^Error: workbook_too_large$/);
+});
+
+test("individually bounded entries cannot exceed the whole-workbook expansion budget", async () => {
+  const bytes = await compressedWorkbook(
+    Array.from({ length: 5 }, (_, i) => [
+      `padding-${i}.bin`,
+      " ".repeat(entryByteLimit),
+    ]),
+  );
+  await assert.rejects(parseWorkbook(bytes), /^Error: workbook_too_large$/);
+});
+
+test("workbooks with excessive ZIP entry counts are rejected", async () => {
+  const bytes = await compressedWorkbook(
+    Array.from({ length: 257 }, (_, i) => [`empty-${i}.bin`, ""]),
+  );
+  await assert.rejects(parseWorkbook(bytes), /^Error: workbook_too_large$/);
+});
+
+test("a normal workbook with exactly 256 ZIP entries still imports", async () => {
+  const zip = await JSZip.loadAsync(await excelTemplate());
+  const count = Object.keys(zip.files).length;
+  for (let i = count; i < 256; i++)
+    zip.file(`empty-${i}.bin`, "", { createFolders: false });
+  const bytes = await zip.generateAsync({ type: "arraybuffer" });
+  assert.equal((await parseWorkbook(bytes))[0].course.subject, "数学");
+});
+
+test("entry and aggregate expansion limits are inclusive", async () => {
+  const zip = new JSZip();
+  for (let i = 0; i < totalByteLimit / entryByteLimit; i++)
+    zip.file(`padding-${i}.bin`, " ".repeat(entryByteLimit));
+  const bytes = await zip.generateAsync({
+    type: "arraybuffer",
+    compression: "DEFLATE",
+  });
+  assert.equal(await workbookWithoutNotes(bytes), bytes);
+
+  const workbook = await compressedWorkbook([
+    ["unused.bin", " ".repeat(entryByteLimit)],
+  ]);
+  assert.equal((await parseWorkbook(workbook))[0].course.subject, "数学");
+});
+
+test("a normal 500-course workbook still imports at the row limit", async () => {
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet("课程表");
+  sheet.addRow(templateHeaders);
+  for (let i = 0; i < 500; i++)
+    sheet.addRow([`课程 ${i + 1}`, 1, "09:00", "10:30", "1-16", "全部"]);
+  const bytes = await book.xlsx.writeBuffer();
+  const original = Buffer.from(bytes);
+  const rows = await parseWorkbook(bytes);
+  assert.equal(rows.length, 500);
+  assert.ok(rows.every((row) => row.course && !row.issues.length));
+  assert.deepEqual(bytes, original);
+});
+
 test("import failures distinguish invalid data from unreadable workbooks", async () => {
   await assert.rejects(
     parseWorkbook(new Uint8Array([1, 2, 3]).buffer),
@@ -174,6 +301,7 @@ test("import failures distinguish invalid data from unreadable workbooks", async
   );
   assert.match(importFailure(new Error("template_headers")).zh, /首行列名/);
   assert.match(importFailure(new Error("too_many_rows")).zh, /500/);
+  assert.match(importFailure(new Error("workbook_too_large")).en, /expanded/i);
   assert.match(importFailure(new Error("invalid_xlsx")).zh, /解析 Excel/);
   assert.match(
     importFailure(new Error("workbook_reader_unavailable")).zh,

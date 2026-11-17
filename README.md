@@ -5,7 +5,7 @@ Astro 静态博客；文章位于 `src/content/posts/`，站点资料位于 `src
 ## 本地运行
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -18,7 +18,7 @@ npm run dev
 1. 创建 Supabase 项目，在 Authentication 的用户注册设置中关闭公开注册，并邀请 `qianzihanduo@gmail.com`。
 2. 依次应用 `supabase/migrations/20260924000000_vocabulary_cards.sql`、`supabase/migrations/20261020000000_conjugation_progress.sql`、`supabase/migrations/20261022162053_verb_meaning_progress.sql` 与 `supabase/migrations/20261022163941_vocabulary_mistake_reviews.sql`。已有项目只需补充尚未应用的迁移。四份迁移分别配置词库、变位进度、含义进度与错题复习；数据按用户和授权邮箱隔离。应用迁移时应使用该项目已获授权的数据库管理方式。
 3. 配置邮件 SMTP，并将生产站点的 URL 添加为 Auth Site URL 和允许的重定向地址；两个页面的回调地址 `/vocabulary/` 和 `/vocabulary/conjugation/` 均需加入允许列表。本地开发时对应添加 `http://localhost:4321/vocabulary/` 和 `http://localhost:4321/vocabulary/conjugation/`。
-4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。若使用 GitHub Actions 发布，在仓库 Settings > Secrets and variables > Actions 中添加 `PUBLIC_SUPABASE_URL` 和 `PUBLIC_SUPABASE_ANON_KEY` 两个 Repository secrets；工作流会把它们传给构建步骤。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
+4. 本地将 `.env.example` 复制为 `.env`，填写 Supabase Project URL 和 publishable/anon key。本机发布命令会读取该文件；`.env` 不提交到 Git。只使用浏览器公开 key；不要把 `service_role`/secret key 放入网站或仓库。
 
 单词记忆页按稳定顺序分批加载词库和错题，直到读取完所有记录，避免接口默认行数上限截断大词库。任意一批加载失败都会显示加载失败，不会用不完整的数据开始练习。`tests/load-all-rows.test.mjs` 覆盖 2,970 个词条、较低的服务端上限、整页边界和中途失败。
 
@@ -68,12 +68,19 @@ B2 专题来自两份公开教学资源的 43 词条并集（其中 penser 已�
 
 上线前应用 `supabase/migrations/20261103142006_review_planner.sql`，部署 `review-task-breakdown` Edge Function，在 Supabase 服务端设置 `DEEPSEEK_API_KEY`。登录沿用已配置的 `/vocabulary/` 回调并自动返回复习计划，前端沿用现有公开环境变量。配置、排程规则及验证说明见 [复习计划说明](docs/review-planner.md)。
 
-## 腾讯云发布（服务器无需 Git）
+## Mac mini 手动发布
 
-1. 在服务器创建仅 root 可读的证书目录（例如 `/etc/nginx/certs`），上传腾讯云下载的 `域名_bundle.crt` 和 `域名.key`；私钥文件权限设为 `600`。
-2. 将 `deploy/nginx.conf.example` 中的域名、网站目录与证书文件路径替换为实际值，执行 `nginx -t` 验证后重载 Nginx。此项目使用你购买的腾讯云 TLS 证书，不使用 Certbot。
-3. 在 GitHub 仓库 Secrets 中配置 `SITE_URL`、`SERVER_HOST`、`SERVER_USER`、`SERVER_SSH_KEY` 与 `SERVER_PATH`。
-4. `SERVER_PATH` 指向 Nginx 的网站根目录，例如 `/home/ubuntu/personal-blog`；确保该用户可写入此目录。
-5. 推送至 `main` 后，GitHub Actions 在云端安装依赖、构建 `dist/`，然后通过 SSH 上传成品。腾讯云只负责提供 Nginx 静态文件，不需要 Git 或 Node.js。
+正式网站由本机 Docker 提供，通过 Cloudflare Tunnel 访问。修改完成后，在项目目录执行：
 
-紧急手动发布：本地运行 `npm run build`，再通过 SCP/SFTP 将 `dist/` 内的文件上传到网站根目录。
+```sh
+npm run deploy:local
+```
+
+命令先运行测试和构建，全部通过后切换正式版本并检查网页与容器状态；失败会保留或恢复旧版本。它发布当前目录中已保存的源码，包括尚未提交 Git 的修改。平时可用 `npm run dev` 预览；保存文件不会自动改变正式网站。
+
+```sh
+npm run deploy:check     # 完整测试与构建，只检查，不上线
+npm run deploy:rollback  # 恢复上一次成功发布的版本
+```
+
+发布需要 Docker 正在运行、Node.js 22.6 或更新版本，以及 `.env` 中已有的公开 Supabase 配置。首次安装或更新依赖后运行 `npm ci`。GitHub 自动发布已移除；提交和推送代码仅用于版本备份。详细运行、缓存和恢复说明见 [Mac mini 部署说明](deploy/mac-mini/README.md)。

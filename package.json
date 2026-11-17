@@ -7,7 +7,10 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "dev": "astro dev",
     "build": "astro check && astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "deploy:local": "node scripts/publish-local.mjs",
+    "deploy:check": "node scripts/publish-local.mjs --check",
+    "deploy:rollback": "node scripts/publish-local.mjs --rollback"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.12",

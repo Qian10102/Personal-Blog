@@ -3,6 +3,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "supabase/functions/review-task-breakdown/index.ts"
+    "supabase/functions/review-task-breakdown/index.ts",
+    "deploy/mac-mini/site",
+    "work/local-publish"
   ]
 }
