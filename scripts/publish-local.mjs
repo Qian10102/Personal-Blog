@@ -18,6 +18,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const composeFile = join(projectRoot, "deploy/mac-mini/compose.yaml");
@@ -185,35 +186,84 @@ function run(command, args, env = process.env) {
     throw new Error(`${command} ${args.join(" ")} 未通过，正式内容没有发布。`);
 }
 
-async function verifyLocal(releasePath) {
+export async function verifyLocal(
+  releasePath,
+  {
+    baseUrl = "http://127.0.0.1:8081",
+    timeoutMs = 60000,
+    intervalMs = 1000,
+    requestTimeoutMs = 10000,
+    onRetry = (error, attempt) => {
+      if (attempt === 1)
+        console.log(`等待 Docker 同步发布文件，将自动重试：${error.message}`);
+    },
+  } = {},
+) {
   const files = await filesIn(releasePath);
-  const checks = [
+  const names = [
     "index.html",
     "vocabulary/index.html",
+    "vocabulary/conjugation/index.html",
     "review-planner/index.html",
-    files.find((name) => name.startsWith("_astro" + sep)),
-  ].filter((name) => name && files.includes(name));
-  for (const name of checks) {
-    const path =
-      "/" +
-      name
-        .split(sep)
-        .map(encodeURIComponent)
-        .join("/")
-        .replace(/index\.html$/, "");
-    const response = await fetch("http://127.0.0.1:8081" + path, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
-    const expected = createHash("sha256")
-      .update(await readFile(join(releasePath, name)))
-      .digest("hex");
-    const actual = createHash("sha256")
-      .update(Buffer.from(await response.arrayBuffer()))
-      .digest("hex");
-    if (!response.ok || actual !== expected)
-      throw new Error(`本机网站内容检查失败：${path}`);
+    ...files.filter((name) => name.startsWith("_astro" + sep)),
+  ].filter((name) => files.includes(name));
+  const checks = await Promise.all(
+    names.map(async (name) => ({
+      path:
+        "/" +
+        name
+          .split(sep)
+          .map(encodeURIComponent)
+          .join("/")
+          .replace(/index\.html$/, ""),
+      expected: createHash("sha256")
+        .update(await readFile(join(releasePath, name)))
+        .digest("hex"),
+    })),
+  );
+  // Docker Desktop can expose the previous symlink target briefly after rename.
+  // Require a complete matching pass within one deadline, including body reads.
+  const deadline = performance.now() + timeoutMs;
+  let failure;
+  for (let attempt = 1; performance.now() < deadline; attempt++) {
+    try {
+      for (const { path, expected } of checks) {
+        try {
+          const remaining = deadline - performance.now();
+          if (remaining <= 0) throw new Error("核对时间已用尽");
+          const response = await fetch(baseUrl + path, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(
+              Math.max(1, Math.ceil(Math.min(requestTimeoutMs, remaining))),
+            ),
+          });
+          if (!response.ok) {
+            await response.body?.cancel();
+            throw new Error(`HTTP ${response.status}`);
+          }
+          const actual = createHash("sha256")
+            .update(Buffer.from(await response.arrayBuffer()))
+            .digest("hex");
+          if (actual !== expected) throw new Error("返回内容与发布版本不一致");
+        } catch (error) {
+          throw new Error(`本机网站内容检查失败：${path}（${error.message}）`, {
+            cause: error,
+          });
+        }
+      }
+      return;
+    } catch (error) {
+      failure = error;
+    }
+    const remaining = deadline - performance.now();
+    if (remaining <= 0) break;
+    onRetry(failure, attempt);
+    await delay(Math.min(intervalMs, remaining));
   }
+  throw new Error(
+    `等待 Docker 文件同步超时（${timeoutMs / 1000} 秒）：${failure?.message || "核对时间已用尽"}`,
+    { cause: failure },
+  );
 }
 
 async function main() {
